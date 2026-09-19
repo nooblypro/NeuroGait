@@ -1,0 +1,14 @@
+# MediaPipe platform wheel selection:
+# macOS darwin uses 0.10.35 to avoid Metal shader runtime crash.
+# Linux x86_64 and aarch64 use 1.0.1.
+mediapipe==0.10.35; sys_platform == "darwin"
+mediapipe==1.0.1; sys_platform == "linux"
+opencv-python-headless>=4.8.0
+scikit-learn==1.9.1
+pandas==3.0.6
+numpy>=1.26.0,<3.0.0
+joblib==1.6.0
+scipy>=1.11.0
+pytest>=8.0.0
+streamlit>=1.35.0
+requests>=2.31.0
