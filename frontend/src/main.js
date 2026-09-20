@@ -342,10 +342,9 @@ function updateBeats(p) {
       dom.b5Credits.style.transform = `translateY(${lerp(18, 0, credP)}px)`;
     }
 
-    // Fade to pure black at absolute end
-    const blackAlpha = smoothstep(0.988, 1.000, p);
+    // Keep Beat 5 and CTAs fully visible at end of scroll (no blackout fade overlaying buttons)
     if (dom.blackout) {
-      dom.blackout.style.opacity = blackAlpha.toFixed(2);
+      dom.blackout.style.opacity = '0';
     }
   } else {
     setBeatVisibility(dom.b5, false);
