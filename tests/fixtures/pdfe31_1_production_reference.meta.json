@@ -1,0 +1,13 @@
+{
+  "target_trial": "PDFE31_1",
+  "total_episodes": 76,
+  "fog_episodes": 27,
+  "borderline_intervals": 24,
+  "normal_intervals": 25,
+  "image_tag": "955519187785.dkr.ecr.ap-south-1.amazonaws.com/neurogait-ml:parity-v1",
+  "image_digest": "sha256:9ef0154fbd342c85d29a9e09f9ca7b6375dd6eeeb0046d2409c9ee1e768993f9",
+  "model_sha256": "02a87b0a226fb51aa4a9b8363cf6126451bab1e597810dc5c1d08bfdee8b3ecf",
+  "pose_model_sha256": "4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad",
+  "input_video_sha256": "631eda97ded7c42d8be66220ffe0eeb7fc778aca5b225383338002203d0ab7a1",
+  "input_imu_sha256": "01961610728deaa4bb6a97424d241da686a0f6f03019a385be15feacbb56c1c8"
+}

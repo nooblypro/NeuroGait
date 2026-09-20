@@ -1,118 +1,43 @@
 /**
- * NeuroGait Presentation Layer: Non-Overlapping Timeline Aggregator
+ * NeuroGait Presentation Layer: Canonical Timeline Processor
  *
- * Resolves overlapping sliding model windows into an exhaustive, strictly
- * non-overlapping timeline where every timestamp belongs to exactly one state:
- * - Normal (< 0.40 posterior probability)
- * - Borderline (0.40 <= probability < 0.60)
- * - FoG (>= 0.60 posterior probability)
- *
- * Deterministic Resolution Rule:
- * 1. Endpoints Partitioning: Collect all unique start/end timestamps from raw windows
- *    and construct disjoint elementary sub-intervals [t_j, t_{j+1}).
- * 2. Overlap Resolution: For each elementary sub-interval, evaluate all model windows
- *    covering the sub-interval midpoint. Compute the mean FoG probability across active
- *    windows: P_j = (1 / |W(j)|) * sum_{w in W(j)} w.confidence.
- *    Assign state according to clinical thresholds (FoG >= 0.60, Borderline >= 0.40, Normal < 0.40).
- *    Assign dominant cue from the covering window with highest classification confidence.
- * 3. Contiguous State Merging: Merge contiguous elementary intervals that share the same
- *    state into unified maximal non-overlapping intervals, weighting mean confidence by duration.
+ * Treats backend canonical prediction episodes as authoritative and preserves
+ * exact episode boundaries, confidences, classifications, and primary cues.
  *
  * Guarantees:
- * - next.start >= previous.end for all consecutive intervals (zero temporal overlap).
- * - Total intervals = FoG intervals + Borderline intervals + Normal intervals.
- * - Raw model predictions remain preserved internally without alteration.
+ * - Faithful representation of canonical backend prediction JSON.
+ * - Does not recompute, re-average, or reinterpret model probabilities.
+ * - Does not invent new ML classifications or convert FoG <-> Borderline.
+ * - Chronologically sorts and formats display intervals.
  */
 
 /**
- * Aggregates raw overlapping model prediction windows into a non-overlapping timeline.
- * @param {Array<{start: number, end: number, confidence: number, type: string, primary_cue?: string}>} rawWindows
- * @returns {Array<{start: number, end: number, confidence: number, type: 'Normal'|'Borderline'|'FoG', primary_cue: string}>}
+ * Validates and chronologically sorts canonical prediction episodes from the backend.
+ * @param {Array<{start: number, end: number, confidence: number, type: string, primary_cue?: string, data_mode?: string}>} canonicalEpisodes
+ * @returns {Array<{start: number, end: number, confidence: number, type: 'Normal'|'Borderline'|'FoG', primary_cue: string, data_mode: string}>}
  */
-export function aggregateTimeline(rawWindows) {
-  if (!rawWindows || !Array.isArray(rawWindows) || rawWindows.length === 0) {
+export function aggregateTimeline(canonicalEpisodes) {
+  if (!canonicalEpisodes || !Array.isArray(canonicalEpisodes) || canonicalEpisodes.length === 0) {
     return [];
   }
 
-  // 1. Collect and sort all unique endpoint timestamps
-  const endpointsSet = new Set();
-  for (const w of rawWindows) {
-    if (typeof w.start === 'number' && typeof w.end === 'number' && w.end > w.start) {
-      endpointsSet.add(Number(w.start.toFixed(3)));
-      endpointsSet.add(Number(w.end.toFixed(3)));
+  const validated = [];
+  for (const ep of canonicalEpisodes) {
+    if (typeof ep.start === 'number' && typeof ep.end === 'number' && ep.end >= ep.start) {
+      validated.push({
+        start: Number(ep.start.toFixed(3)),
+        end: Number(ep.end.toFixed(3)),
+        confidence: typeof ep.confidence === 'number' ? Number(ep.confidence.toFixed(4)) : 0.0,
+        type: ep.type || 'Normal',
+        primary_cue: ep.primary_cue || 'None',
+        data_mode: ep.data_mode || 'real'
+      });
     }
   }
 
-  const timePoints = Array.from(endpointsSet).sort((a, b) => a - b);
-  if (timePoints.length < 2) return [];
-
-  // 2. Resolve each elementary sub-interval [t_j, t_{j+1})
-  const elementary = [];
-  for (let i = 0; i < timePoints.length - 1; i++) {
-    const t0 = timePoints[i];
-    const t1 = timePoints[i + 1];
-    if (t1 - t0 < 0.001) continue; // Skip zero-duration slices
-
-    const mid = (t0 + t1) / 2;
-    // Find all raw windows covering the midpoint of this elementary slice
-    const covering = rawWindows.filter(w => w.start <= mid && w.end >= mid);
-    if (covering.length === 0) continue;
-
-    // Mean FoG probability across all active windows covering this slice
-    const meanConf = covering.reduce((sum, w) => sum + (w.confidence || 0), 0) / covering.length;
-
-    let state = 'Normal';
-    if (meanConf >= 0.60) {
-      state = 'FoG';
-    } else if (meanConf >= 0.40) {
-      state = 'Borderline';
-    }
-
-    // Identify primary cue: best matching active window with highest confidence
-    const bestWindow = covering.reduce((best, w) => {
-      return (w.confidence || 0) > (best.confidence || 0) ? w : best;
-    }, covering[0]);
-
-    elementary.push({
-      start: t0,
-      end: t1,
-      confidence: meanConf,
-      type: state,
-      primary_cue: bestWindow.primary_cue || 'None'
-    });
-  }
-
-  // 3. Merge contiguous adjacent elementary intervals sharing the same state
-  const merged = [];
-  for (const slice of elementary) {
-    if (merged.length === 0) {
-      merged.push({ ...slice, maxConf: slice.confidence });
-    } else {
-      const last = merged[merged.length - 1];
-      if (last.type === slice.type && Math.abs(last.end - slice.start) < 0.005) {
-        const dLast = last.end - last.start;
-        const dSlice = slice.end - slice.start;
-        const totalD = dLast + dSlice;
-        last.confidence = totalD > 0 ? (last.confidence * dLast + slice.confidence * dSlice) / totalD : last.confidence;
-        last.end = slice.end;
-        if (slice.confidence > (last.maxConf || 0)) {
-          last.primary_cue = slice.primary_cue;
-          last.maxConf = slice.confidence;
-        }
-      } else {
-        merged.push({ ...slice, maxConf: slice.confidence });
-      }
-    }
-  }
-
-  // 4. Clean up precision and return canonical non-overlapping intervals
-  return merged.map(m => ({
-    start: Number(m.start.toFixed(2)),
-    end: Number(m.end.toFixed(2)),
-    confidence: Number(m.confidence.toFixed(4)),
-    type: m.type,
-    primary_cue: m.primary_cue || 'None'
-  }));
+  // Ensure deterministic chronological ordering
+  validated.sort((a, b) => a.start - b.start || a.end - b.end);
+  return validated;
 }
 
 /**

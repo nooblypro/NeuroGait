@@ -1,0 +1,610 @@
+[
+  {
+    "start": 0.008,
+    "end": 4.708,
+    "confidence": 0.0375,
+    "type": "Normal",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 4.708,
+    "end": 6.108,
+    "confidence": 0.8602,
+    "type": "FoG",
+    "primary_cue": "right_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 6.108,
+    "end": 6.208,
+    "confidence": 0.5205,
+    "type": "Borderline",
+    "primary_cue": "right_knee_angle",
+    "data_mode": "real"
+  },
+  {
+    "start": 6.208,
+    "end": 8.708,
+    "confidence": 0.1223,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 8.708,
+    "end": 9.908,
+    "confidence": 0.7627,
+    "type": "FoG",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 9.908,
+    "end": 10.008,
+    "confidence": 0.148,
+    "type": "Normal",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 10.008,
+    "end": 11.408,
+    "confidence": 0.9039,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 11.408,
+    "end": 14.408,
+    "confidence": 0.0355,
+    "type": "Normal",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 14.408,
+    "end": 15.508,
+    "confidence": 0.4967,
+    "type": "Borderline",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 15.508,
+    "end": 15.608,
+    "confidence": 0.0955,
+    "type": "Normal",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 15.608,
+    "end": 15.708,
+    "confidence": 0.4887,
+    "type": "Borderline",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 15.708,
+    "end": 18.208,
+    "confidence": 0.9294,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 18.208,
+    "end": 18.508,
+    "confidence": 0.0931,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 18.508,
+    "end": 19.708,
+    "confidence": 0.7149,
+    "type": "FoG",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 19.708,
+    "end": 20.508,
+    "confidence": 0.1186,
+    "type": "Normal",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 20.508,
+    "end": 20.708,
+    "confidence": 0.4174,
+    "type": "Borderline",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 20.708,
+    "end": 21.908,
+    "confidence": 0.7455,
+    "type": "FoG",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 21.908,
+    "end": 22.708,
+    "confidence": 0.1677,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 22.708,
+    "end": 24.208,
+    "confidence": 0.8768,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 24.208,
+    "end": 24.808,
+    "confidence": 0.439,
+    "type": "Borderline",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 24.808,
+    "end": 28.808,
+    "confidence": 0.0349,
+    "type": "Normal",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 28.808,
+    "end": 31.108,
+    "confidence": 0.8695,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 31.108,
+    "end": 31.308,
+    "confidence": 0.5799,
+    "type": "Borderline",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 31.308,
+    "end": 31.408,
+    "confidence": 0.0644,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 31.408,
+    "end": 34.308,
+    "confidence": 0.818,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 34.308,
+    "end": 35.408,
+    "confidence": 0.4723,
+    "type": "Borderline",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 35.408,
+    "end": 35.708,
+    "confidence": 0.1536,
+    "type": "Normal",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 35.708,
+    "end": 35.808,
+    "confidence": 0.469,
+    "type": "Borderline",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 35.808,
+    "end": 37.808,
+    "confidence": 0.8745,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 37.808,
+    "end": 42.008,
+    "confidence": 0.0285,
+    "type": "Normal",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 42.008,
+    "end": 47.808,
+    "confidence": 0.8862,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 47.808,
+    "end": 48.808,
+    "confidence": 0.4844,
+    "type": "Borderline",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 48.808,
+    "end": 50.208,
+    "confidence": 0.7277,
+    "type": "FoG",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 50.208,
+    "end": 50.608,
+    "confidence": 0.1259,
+    "type": "Normal",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 50.608,
+    "end": 51.108,
+    "confidence": 0.5378,
+    "type": "Borderline",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 51.108,
+    "end": 52.408,
+    "confidence": 0.7786,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 52.408,
+    "end": 55.408,
+    "confidence": 0.0731,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 55.408,
+    "end": 55.508,
+    "confidence": 0.4032,
+    "type": "Borderline",
+    "primary_cue": "right_knee_angle",
+    "data_mode": "real"
+  },
+  {
+    "start": 55.508,
+    "end": 57.608,
+    "confidence": 0.9018,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 57.608,
+    "end": 57.908,
+    "confidence": 0.059,
+    "type": "Normal",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 57.908,
+    "end": 58.008,
+    "confidence": 0.4904,
+    "type": "Borderline",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 58.008,
+    "end": 61.208,
+    "confidence": 0.8898,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 61.208,
+    "end": 61.408,
+    "confidence": 0.2163,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 61.408,
+    "end": 61.508,
+    "confidence": 0.4162,
+    "type": "Borderline",
+    "primary_cue": "left_knee_angle",
+    "data_mode": "real"
+  },
+  {
+    "start": 61.508,
+    "end": 64.308,
+    "confidence": 0.7738,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 64.308,
+    "end": 65.108,
+    "confidence": 0.2128,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 65.108,
+    "end": 65.908,
+    "confidence": 0.4829,
+    "type": "Borderline",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 65.908,
+    "end": 67.708,
+    "confidence": 0.9643,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 67.708,
+    "end": 67.908,
+    "confidence": 0.4744,
+    "type": "Borderline",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 67.908,
+    "end": 72.308,
+    "confidence": 0.0285,
+    "type": "Normal",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 72.308,
+    "end": 72.408,
+    "confidence": 0.5885,
+    "type": "Borderline",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 72.408,
+    "end": 75.408,
+    "confidence": 0.8486,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 75.408,
+    "end": 75.908,
+    "confidence": 0.0956,
+    "type": "Normal",
+    "primary_cue": "right_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 75.908,
+    "end": 76.208,
+    "confidence": 0.4645,
+    "type": "Borderline",
+    "primary_cue": "right_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 76.208,
+    "end": 79.808,
+    "confidence": 0.8486,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 79.808,
+    "end": 80.008,
+    "confidence": 0.1156,
+    "type": "Normal",
+    "primary_cue": "left_knee_angle",
+    "data_mode": "real"
+  },
+  {
+    "start": 80.008,
+    "end": 81.708,
+    "confidence": 0.8703,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 81.708,
+    "end": 86.308,
+    "confidence": 0.0723,
+    "type": "Normal",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 86.308,
+    "end": 86.408,
+    "confidence": 0.4041,
+    "type": "Borderline",
+    "primary_cue": "right_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 86.408,
+    "end": 90.408,
+    "confidence": 0.833,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 90.408,
+    "end": 90.608,
+    "confidence": 0.4373,
+    "type": "Borderline",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 90.608,
+    "end": 95.208,
+    "confidence": 0.8521,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 95.208,
+    "end": 95.308,
+    "confidence": 0.1199,
+    "type": "Normal",
+    "primary_cue": "left_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 95.308,
+    "end": 97.508,
+    "confidence": 0.8901,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 97.508,
+    "end": 97.608,
+    "confidence": 0.4783,
+    "type": "Borderline",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 97.608,
+    "end": 98.508,
+    "confidence": 0.0708,
+    "type": "Normal",
+    "primary_cue": "gyro_x_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 98.508,
+    "end": 99.308,
+    "confidence": 0.5788,
+    "type": "Borderline",
+    "primary_cue": "accel_rms",
+    "data_mode": "real"
+  },
+  {
+    "start": 99.308,
+    "end": 101.508,
+    "confidence": 0.7014,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 101.508,
+    "end": 101.808,
+    "confidence": 0.4532,
+    "type": "Borderline",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 101.808,
+    "end": 102.708,
+    "confidence": 0.0516,
+    "type": "Normal",
+    "primary_cue": "right_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 102.708,
+    "end": 102.808,
+    "confidence": 0.469,
+    "type": "Borderline",
+    "primary_cue": "stride_width",
+    "data_mode": "real"
+  },
+  {
+    "start": 102.808,
+    "end": 105.708,
+    "confidence": 0.862,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 105.708,
+    "end": 106.708,
+    "confidence": 0.5185,
+    "type": "Borderline",
+    "primary_cue": "right_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 106.708,
+    "end": 112.808,
+    "confidence": 0.7936,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  },
+  {
+    "start": 112.808,
+    "end": 117.108,
+    "confidence": 0.0608,
+    "type": "Normal",
+    "primary_cue": "right_ankle_velocity",
+    "data_mode": "real"
+  },
+  {
+    "start": 117.108,
+    "end": 119.908,
+    "confidence": 0.8737,
+    "type": "FoG",
+    "primary_cue": "gyro_z_var",
+    "data_mode": "real"
+  }
+]

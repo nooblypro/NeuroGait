@@ -101,3 +101,30 @@ Outputs must adhere strictly to the JSON schema:
 ```
 - `type`: one of `["FoG", "Borderline", "Normal"]`.
 - `data_mode`: `"real"` for actual clinical trial data, `"synthetic_demo"` only if synthetic fallback was forced.
+
+## 10. Production Canonical Runtime Environment & Cross-Platform Invariant
+
+### Authoritative Runtime: Linux ARM64 Container
+- **Canonical Definition**: **AWS / Linux ARM64 Container = Production Canonical Inference Environment**.
+- **Execution Target**: Deployed AWS ECS Fargate tasks (`neurogait-task:2`) running the immutable container image `955519187785.dkr.ecr.ap-south-1.amazonaws.com/neurogait-ml:parity-v1`.
+- **Runtime Dependencies**:
+  - Python: `3.11.16` (Debian 12 Bookworm, glibc 2.41)
+  - MediaPipe: `1.0.1` (TensorFlow Lite XNNPACK CPU delegate)
+  - OpenCV: `5.0.0.93` (Linux libavcodec / ffmpeg YUV420p decoding)
+  - scikit-learn: `1.9.1`
+  - pandas: `3.0.6`
+  - numpy: `2.4.6`
+  - scipy: `1.17.1`
+  - joblib: `1.6.0`
+- **Authoritative Status**: AWS ECS Fargate output is the authoritative truth for deployed clinical inference. All production assertions and reference fixtures are derived strictly from this container environment.
+
+### Local macOS Execution: Development & Debugging Only
+- **Non-Canonical**: Local macOS execution (`.venv` on Darwin Apple Silicon) is for development, rapid local debugging, and integration testing only.
+- **Cross-Platform Numerical Divergence**:
+  - macOS Darwin executes MediaPipe `0.10.35` utilizing Apple's Metal GPU delegate (`GL 2.1 Metal`) and AVFoundation/Darwin video decoding.
+  - Linux aarch64 executes MediaPipe `1.0.1` utilizing TensorFlow Lite XNNPACK CPU instructions and Linux ffmpeg decoding.
+  - Due to differing video color space conversion matrices and GPU shader vs. CPU SIMD floating-point accumulations, MediaPipe landmark coordinates differ slightly across platforms (e.g. for `PDFE31_1`, this shifts onset of FoG prediction 1 from `55.408s` to `55.508s` and yields 75 vs. 76 total intervals).
+- **Invariant Guarantee**:
+  $$\text{Local Docker (Linux aarch64)} \equiv \text{AWS ECS Fargate} \equiv \text{Backend Canonical Output} \equiv \text{Frontend Rendered Presentation}$$
+  Local macOS native output is NOT required to be numerically identical to AWS production output.
+

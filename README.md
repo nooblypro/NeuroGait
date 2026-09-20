@@ -35,14 +35,23 @@ DATASET (Figshare Parkinson's Turning Task)
 
 ---
 
-## 2. Environment & Installation
+## 2. Environment & Runtime Specifications
 
-### Requirements
-- macOS (Apple Silicon arm64 supported) or Linux x86_64
-- Python 3.10 – 3.13 (tested and verified on Python 3.13.15, Apple M4)
-- MediaPipe 0.10.35 with `mediapipe.tasks.python.vision.PoseLandmarker`
+### Production Canonical Runtime (Authoritative)
+- **Environment**: Linux aarch64 / ARM64 Docker Container (`neurogait-ml:parity-v1` deployed on AWS ECS Fargate)
+- **Python**: `3.11.16` (Debian 12 Bookworm, glibc 2.41)
+- **MediaPipe**: `1.0.1` (TensorFlow Lite XNNPACK CPU delegate)
+- **OpenCV**: `5.0.0.93` (Linux libavcodec / ffmpeg)
+- **Core ML Stack**: `scikit-learn==1.9.1`, `pandas==3.0.6`, `numpy==2.4.6`, `scipy==1.17.1`, `joblib==1.6.0`
+- **Authoritative Status**: AWS ECS Fargate container execution is the canonical production truth. All production verification tests assert exact parity against this pinned container environment.
 
-### Setup
+### Local Development Runtime (Non-Canonical)
+- **Supported**: macOS Darwin (Apple Silicon arm64, tested on Apple M4) and Linux x86_64/aarch64
+- **Python**: Python 3.10 – 3.13 (tested on Python 3.13.15)
+- **MediaPipe**: `0.10.35` (Apple Metal GPU delegate)
+- **Cross-Platform Numerical Divergence**: macOS native inference produces minor floating-point differences in pose landmarks due to GPU shaders and AVFoundation video decoding compared to Linux CPU XNNPACK. Local macOS execution is supported for rapid local development and smoke testing, but is not treated as authoritative production output.
+
+### Local Setup
 ```bash
 # Clone repository and navigate
 cd NeuroGait
@@ -54,6 +63,7 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 ```
+
 
 ---
 
