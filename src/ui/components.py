@@ -146,9 +146,18 @@ def render_header():
 
 def render_mode_selector() -> str:
     """Render mode selection tabs distinguishing Recorded Mode from Live Mode."""
+    default_idx = 0
+    try:
+        url_mode = st.query_params.get("mode")
+        if url_mode == "live_demo":
+            default_idx = 1
+    except Exception:
+        pass
+
     selected_mode = st.radio(
         "Select Operating Mode",
         options=["recorded", "live_demo"],
+        index=default_idx,
         format_func=lambda m: (
             "📁 Recorded Analysis Mode (Primary Demo)"
             if m == "recorded"

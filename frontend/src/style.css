@@ -1024,3 +1024,112 @@ body {
     padding: 1.6rem;
   }
 }
+
+/* ==========================================================================
+   NEUROGAIT CTA ASSESSMENT BUTTONS (Beat 5 Ending)
+   ========================================================================== */
+.assessment-cta-box {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.cta-chip {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  text-shadow: var(--text-shadow-deep);
+}
+
+.cta-heading {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  text-shadow: var(--text-shadow-deep);
+}
+
+.cta-buttons-row {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.8rem;
+  border-radius: 8px;
+  text-decoration: none;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--line-light);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  transition: transform 0.25s var(--ease-cinematic), border-color 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.cta-btn:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+}
+
+.btn-recorded {
+  border-color: rgba(223, 177, 91, 0.6);
+}
+
+.btn-recorded:hover {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 25px var(--accent-gold-glow);
+}
+
+.btn-live {
+  border-color: rgba(56, 189, 248, 0.6);
+}
+
+.btn-live:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+}
+
+.btn-icon {
+  font-size: 1.8rem;
+}
+
+.btn-label-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.btn-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #ffffff;
+}
+
+.btn-sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}

@@ -12,7 +12,6 @@ from typing import Any, Dict, Optional
 import streamlit as st
 
 from src.ui.api_client import NeuroGaitAPIClient
-from src.ui.animated_hero import render_animated_hero
 from src.ui.components import (
     inject_custom_styles,
     render_borderline_section,
@@ -88,9 +87,6 @@ def reset_assessment():
 def main():
     init_session_state()
     client: NeuroGaitAPIClient = st.session_state.api_client
-
-    # Render Animated 5-Beat Scroll Intro Experience
-    render_animated_hero()
 
     # Render Header & Mode Selector
     render_header()
