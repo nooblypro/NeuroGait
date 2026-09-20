@@ -746,6 +746,28 @@ function renderResults(data) {
     if (rbSub) rbSub.textContent = 'No FoG-classified intervals were detected in this recording.';
   }
 
+  // 5b. Populate FoG Burden Card
+  const fbcValue = document.getElementById('fbc-value');
+  const fbcDuration = document.getElementById('fbc-duration');
+  const fbcStatus = document.getElementById('fbc-status');
+  const fbcBarFill = document.getElementById('fbc-bar-fill');
+
+  if (fbcValue) fbcValue.textContent = `${stats.fogBurdenPct.toFixed(1)}%`;
+  if (fbcDuration) fbcDuration.textContent = `${stats.fogDuration.toFixed(2)} s of the analyzed recording classified as FoG`;
+  if (fbcStatus) {
+    if (stats.fogCount === 0) {
+      fbcStatus.textContent = 'No FoG detected';
+    } else {
+      fbcStatus.textContent = 'FoG present — extensive recording';
+    }
+  }
+  if (fbcBarFill) {
+    // Use requestAnimationFrame to trigger CSS transition
+    requestAnimationFrame(() => {
+      fbcBarFill.style.width = `${Math.min(100, stats.fogBurdenPct).toFixed(1)}%`;
+    });
+  }
+
   // 6. Format Model-Grounded Analysis Narrative strictly derived from Aggregated Timeline
   const narrativeText = generateModelGroundedNarrative(timeline, stats);
 

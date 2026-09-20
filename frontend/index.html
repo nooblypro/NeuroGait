@@ -351,7 +351,7 @@
               <div class="rb-meta" id="rb-meta">
                 <span><strong id="rb-fog-count">0</strong> FoG-classified interval(s) of <strong id="rb-total-count">0</strong> total intervals</span>
                 <span class="rb-divider">•</span>
-                <span>Mean Classification Confidence: <strong id="rb-avg-conf">0.0%</strong></span>
+                <span>Mean FoG Probability: <strong id="rb-avg-conf">0.0%</strong></span>
                 <span class="rb-divider">•</span>
                 <span>Dominant Model Cue: <strong id="rb-cue">None</strong></span>
               </div>
@@ -374,6 +374,22 @@
               <div class="m-card m-pass">
                 <div class="m-name">NORMAL SEGMENTS</div>
                 <div class="m-num" id="m-normal">0</div>
+              </div>
+            </div>
+
+            <!-- FoG Burden Card -->
+            <div class="fog-burden-card" id="fog-burden-card">
+              <div class="fbc-left">
+                <div class="fbc-label">FOG BURDEN</div>
+                <div class="fbc-value" id="fbc-value">0.0%</div>
+                <div class="fbc-duration" id="fbc-duration">0.00 s of the analyzed recording classified as FoG</div>
+                <div class="fbc-status" id="fbc-status">No FoG detected</div>
+              </div>
+              <div class="fbc-right">
+                <div class="fbc-bar-wrap">
+                  <div class="fbc-bar-fill" id="fbc-bar-fill" style="width: 0%"></div>
+                </div>
+                <div class="fbc-disclaimer">FoG burden is the proportion of the analyzed recording classified as FoG by the model. It is not a clinical severity measure or diagnosis.</div>
               </div>
             </div>
 
@@ -412,7 +428,7 @@
                     <tr>
                       <th>Interval (s)</th>
                       <th>Classified State</th>
-                      <th>Confidence</th>
+                      <th>FoG Probability</th>
                       <th>Model-Derived Cue</th>
                     </tr>
                   </thead>
