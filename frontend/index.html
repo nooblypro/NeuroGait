@@ -297,22 +297,8 @@
             </div>
           </div>
 
-          <!-- Execution Environment Radio Options -->
-          <div class="exec-env-box">
-            <div class="exec-title">Execution Environment</div>
-            <div class="exec-radios">
-              <label class="radio-item">
-                <input type="radio" name="exec_env_radio" value="cloud" checked />
-                <span class="radio-disc"></span>
-                <span class="radio-label">☁️ AWS Cloud Pipeline (Production: API Gateway + Lambda + S3 + ECS Fargate + DynamoDB)</span>
-              </label>
-              <label class="radio-item">
-                <input type="radio" name="exec_env_radio" value="local" />
-                <span class="radio-disc"></span>
-                <span class="radio-label">💻 Local Deterministic Engine (Offline Demo Mode / models/fog_model.pkl)</span>
-              </label>
-            </div>
-          </div>
+          <!-- Execution Environment: Cloud only (hidden input keeps JS contract intact) -->
+          <input type="hidden" name="exec_env_radio" value="cloud" />
 
           <!-- Informational Banner -->
           <div class="info-banner" id="info-banner">
