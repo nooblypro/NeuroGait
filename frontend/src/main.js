@@ -65,7 +65,6 @@ const dom = {
     document.getElementById('b5-word-3'),
   ],
   b5Credits: document.getElementById('b5-credits'),
-  b5Cta: document.getElementById('b5-cta'),
 };
 
 // State Variables
@@ -337,27 +336,19 @@ function updateBeats(p) {
     }
 
     // Credits reveal
-    const credP = smoothstep(0.940, 0.970, p);
+    const credP = smoothstep(0.960, 0.988, p);
     if (dom.b5Credits) {
       dom.b5Credits.style.opacity = credP.toFixed(2);
       dom.b5Credits.style.transform = `translateY(${lerp(18, 0, credP)}px)`;
     }
 
-    // CTA reveal (clickable at end of scroll experience)
-    const ctaP = smoothstep(0.960, 0.995, p);
-    if (dom.b5Cta) {
-      dom.b5Cta.style.opacity = ctaP.toFixed(2);
-      dom.b5Cta.style.transform = `translateY(${lerp(20, 0, ctaP)}px)`;
-      dom.b5Cta.style.pointerEvents = ctaP > 0.3 ? 'auto' : 'none';
-    }
-
-    // Fade curtain behind CTA if needed
+    // Fade to pure black at absolute end
+    const blackAlpha = smoothstep(0.988, 1.000, p);
     if (dom.blackout) {
-      dom.blackout.style.opacity = '0';
+      dom.blackout.style.opacity = blackAlpha.toFixed(2);
     }
   } else {
     setBeatVisibility(dom.b5, false);
-    if (dom.b5Cta) dom.b5Cta.style.pointerEvents = 'none';
     if (dom.blackout) dom.blackout.style.opacity = '0';
   }
 }

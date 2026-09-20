@@ -32,7 +32,7 @@ from src.ui.components import (
 
 # Page configuration
 st.set_page_config(
-    page_title="NeuroGait — Multimodal FoG Assessment",
+    page_title="NeuroGait — Multimodal Movement Assessment",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -84,11 +84,28 @@ def reset_assessment():
         pass
 
 
+from src.ui.animated_hero import render_cinematic_landing_page
+
+
 def main():
     init_session_state()
     client: NeuroGaitAPIClient = st.session_state.api_client
 
-    # Render Header & Mode Selector
+    # View Routing: Default to Cinematic Landing Page unless entering Assessment
+    view_param = st.query_params.get("view")
+    mode_param = st.query_params.get("mode")
+
+    if view_param != "assessment" and not mode_param:
+        render_cinematic_landing_page()
+        return
+
+    # Sidebar Navigation: Option to return to landing page
+    with st.sidebar:
+        if st.button("🏠 Return to Cinematic Landing Page", use_container_width=True):
+            st.query_params.clear()
+            st.rerun()
+
+    # Render Assessment Interface Header & Mode Selector
     render_header()
     selected_mode = render_mode_selector()
 
