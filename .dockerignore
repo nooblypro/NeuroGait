@@ -8,5 +8,9 @@ __pycache__
 .pytest_cache
 .DS_Store
 .gemini
+frontend/
+data/raw/videos/
+data/processed/
+logs/
 outputs/*.json
 !outputs/.gitkeep
