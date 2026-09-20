@@ -16,7 +16,7 @@ import streamlit.components.v1 as components
 def get_cinematic_landing_html() -> str:
     """Read and inline frontend/dist/index.html with its CSS and JS assets."""
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    dist_dir = os.path.join(project_root, "frontend-1", "dist")
+    dist_dir = os.path.join(project_root, "frontend", "dist")
     html_path = os.path.join(dist_dir, "index.html")
 
     if not os.path.exists(html_path):
