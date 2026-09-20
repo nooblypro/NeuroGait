@@ -1055,6 +1055,7 @@ body {
 .preset-toggle-bar {
   display: flex;
   gap: 1.2rem;
+  margin-top: 2rem;
   margin-bottom: 0.5rem;
 }
 
