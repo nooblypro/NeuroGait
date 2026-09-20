@@ -1,191 +1,349 @@
-# NeuroGait — Phase 1 Local ML Foundation
+# NeuroGait — Multimodal Freezing of Gait (FoG) Detection
 
-Local Machine Learning foundation for multimodal Freezing of Gait (FoG) detection in Parkinson's Disease, integrating synchronized video pose kinematics and inertial (IMU) sensor streams.
+> **AI-powered detection of Parkinson's Disease gait episodes** using synchronized video and wearable sensor data, deployed as a full-stack web application on AWS.
 
----
-
-## 1. Verified Architecture
-
-```
-DATASET (Figshare Parkinson's Turning Task)
-  │
-  ├── Video (.mp4 @ ~29.98 FPS) ──> MediaPipe Pose ──> 5 Kinematic Features
-  │                                                      │
-  └── IMU (.txt / .csv @ 128 Hz) ──> 1s Rolling Window ─> 3 Inertial Features
-                                                         │
-                                               Temporal Sync (±0.1s)
-                                                         │
-                                              8 Canonical Features (N, 8)
-                                                         │
-                                        StandardScaler + RandomForest (50 trees)
-                                                         │
-                                           FoG Class-1 Probabilities [0, 1]
-                                                         │
-                                           Post-Processing Thresholds:
-                                           - p >= 0.60 -> FoG
-                                           - 0.40 <= p < 0.60 -> Borderline
-                                           - p < 0.40 -> Normal
-                                                         │
-                                           Episode Aggregation & Gap Merge (<= 1s)
-                                                         │
-                                           Primary Cue Attribution (Std Dev vs Median)
-                                                         │
-                                              Canonical JSON Output
-```
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-brightgreen)](http://neurogait-frontend-955519187785.s3-website.ap-south-1.amazonaws.com/)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 
 ---
 
-## 2. Environment & Runtime Specifications
+## What Is This?
 
-### Production Canonical Runtime (Authoritative)
-- **Environment**: Linux aarch64 / ARM64 Docker Container (`neurogait-ml:parity-v1` deployed on AWS ECS Fargate)
-- **Python**: `3.11.16` (Debian 12 Bookworm, glibc 2.41)
-- **MediaPipe**: `1.0.1` (TensorFlow Lite XNNPACK CPU delegate)
-- **OpenCV**: `5.0.0.93` (Linux libavcodec / ffmpeg)
-- **Core ML Stack**: `scikit-learn==1.9.1`, `pandas==3.0.6`, `numpy==2.4.6`, `scipy==1.17.1`, `joblib==1.6.0`
-- **Authoritative Status**: AWS ECS Fargate container execution is the canonical production truth. All production verification tests assert exact parity against this pinned container environment.
+**Freezing of Gait (FoG)** is a disabling symptom of Parkinson's Disease where a person's feet suddenly feel "glued to the floor" while walking. It leads to falls and significantly reduces quality of life.
 
-### Local Development Runtime (Non-Canonical)
-- **Supported**: macOS Darwin (Apple Silicon arm64, tested on Apple M4) and Linux x86_64/aarch64
-- **Python**: Python 3.10 – 3.13 (tested on Python 3.13.15)
-- **MediaPipe**: `0.10.35` (Apple Metal GPU delegate)
-- **Cross-Platform Numerical Divergence**: macOS native inference produces minor floating-point differences in pose landmarks due to GPU shaders and AVFoundation video decoding compared to Linux CPU XNNPACK. Local macOS execution is supported for rapid local development and smoke testing, but is not treated as authoritative production output.
+**NeuroGait** is a research prototype that automatically detects and timestamps FoG episodes in a video recording. You upload a patient's walking video alongside data from a wrist/waist sensor (IMU), and the system returns a second-by-second breakdown — which moments were normal walking, which were borderline transitions, and which were FoG episodes.
 
-### Local Setup
+**🌐 Try it live:** [neurogait-frontend-955519187785.s3-website.ap-south-1.amazonaws.com](http://neurogait-frontend-955519187785.s3-website.ap-south-1.amazonaws.com/)
+
+> ⚠️ **This is a research tool, not a clinical product.** Outputs are ML model predictions, not medical diagnoses.
+
+---
+
+## How It Works — Plain English
+
+```
+You upload:
+  📹 A video of the patient walking (MP4)
+  📡 IMU sensor data file (TXT/CSV from a wrist/waist sensor)
+
+The pipeline does:
+  1. Extracts pose keypoints from every video frame   (MediaPipe AI)
+  2. Reads raw accelerometer + gyroscope signals       (IMU processing)
+  3. Synchronizes both streams to the same timestamps  (±0.1s tolerance)
+  4. Computes 8 movement features per 1-second window
+  5. Runs a Random Forest classifier on every window
+  6. Assigns each second: FoG / Borderline / Normal
+  7. Merges adjacent same-class windows into episodes
+  8. Returns a JSON timeline + web dashboard
+
+You see:
+  📊 A color-coded timeline bar (red=FoG, yellow=Borderline, green=Normal)
+  📋 An episode-by-episode table with timestamps and FoG probability
+  📈 FoG Burden % (how much of the recording was FoG)
+  🧠 A model-grounded narrative explanation
+```
+
+---
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND (S3)                            │
+│  Vite + Vanilla JS — Cinematic scroll UI + Assessment dashboard  │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │ REST API (API Gateway)
+┌──────────────────────────────▼──────────────────────────────────┐
+│                    CONTROL PLANE (Lambda)                        │
+│  POST /sessions         → DynamoDB (session state)              │
+│  PUT  /confirm-upload   → S3 (video + IMU files)                │
+│  POST /inference/start  → ECS Fargate task dispatch             │
+│  GET  /inference/status → DynamoDB polling                      │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────┐
+│                   ML WORKER (ECS Fargate)                        │
+│  Docker container: neurogait-ml:parity-v1 (Linux ARM64)         │
+│                                                                  │
+│  Video → MediaPipe Pose → 5 kinematic features                  │
+│  IMU   → 1s rolling window → 3 inertial features                │
+│  Sync  → 8-feature matrix → StandardScaler → RandomForest       │
+│  Thresholds → Episode aggregation → JSON output → S3            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Infrastructure summary
+
+| Component | Technology |
+|-----------|-----------|
+| Frontend | Vite + Vanilla JS/CSS, hosted on **AWS S3** |
+| API | **AWS API Gateway** (REST) |
+| Session state | **AWS DynamoDB** |
+| File storage | **AWS S3** (presigned upload URLs) |
+| ML worker | **AWS ECS Fargate** (Docker, Linux ARM64) |
+| ML model | scikit-learn **RandomForest** + MediaPipe |
+| Local dev | Python 3.11+, FastAPI |
+
+---
+
+## Repository Structure
+
+```
+NeuroGait/
+├── src/
+│   ├── pipeline.py          # Core ML pipeline (features → classification)
+│   ├── api.py               # FastAPI local backend
+│   └── contract.py          # JSON output schema validation
+│
+├── scripts/
+│   ├── train.py             # Train the RandomForest model
+│   ├── predict.py           # CLI inference on a single trial
+│   └── download_dataset.py  # Download the Figshare dataset
+│
+├── frontend/
+│   ├── index.html           # Cinematic 6-beat scroll UI
+│   └── src/
+│       ├── main.js          # Scroll engine + assessment controller
+│       ├── timeline_aggregator.js  # Canonical timeline renderer
+│       └── style.css        # Design system
+│
+├── models/
+│   ├── fog_model.pkl        # ✅ Frozen production model (RandomForest)
+│   └── pose_landmarker_full.task  # MediaPipe pose model weights
+│
+├── tests/                   # pytest + node unit/integration tests
+├── data/raw/                # Dataset files (downloaded separately)
+├── logs/                    # Audit trails and experiment reports
+├── Dockerfile               # Production Linux ARM64 ML worker
+├── app.py                   # Streamlit local demo UI
+├── ML_CONTRACT.md           # Formal ML feature/output specification
+└── requirements.txt         # Pinned production dependencies
+```
+
+---
+
+## The ML Model — How It Detects FoG
+
+### What the model sees
+
+The Random Forest sees exactly **8 numerical features** per 1-second window:
+
+| # | Feature | Source | What it captures |
+|---|---------|--------|-----------------|
+| 1 | `left_ankle_velocity` | Video | Left foot movement speed |
+| 2 | `right_ankle_velocity` | Video | Right foot movement speed |
+| 3 | `left_knee_angle` | Video | Left knee bend (0°–180°) |
+| 4 | `right_knee_angle` | Video | Right knee bend (0°–180°) |
+| 5 | `stride_width` | Video | Distance between ankles |
+| 6 | `accel_rms` | IMU | Body acceleration intensity |
+| 7 | `gyro_x_var` | IMU | Side-to-side rotation variability |
+| 8 | `gyro_z_var` | IMU | Vertical-axis rotation variability |
+
+### Classification thresholds
+
+```
+FoG probability ≥ 0.60          →  🔴 FoG
+0.40 ≤ FoG probability < 0.60   →  🟡 Borderline (uncertain)
+FoG probability < 0.40           →  🟢 Normal
+```
+
+### Model details
+- **Algorithm**: `RandomForestClassifier(n_estimators=50, max_depth=10, class_weight="balanced", random_state=42)`
+- **Preprocessor**: `StandardScaler` (fitted on training data, frozen with the model)
+- **Training data**: Figshare Parkinson's turning-task dataset (35 subjects)
+- **Evaluation**: Nested subject-level cross-validation (leakage-free)
+- **Model SHA256** (frozen): `02a87b0a226fb51aa4a9b8363cf6126451bab1e597810dc5c1d08bfdee8b3ecf`
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11 or higher
+- `ffmpeg` available (used by OpenCV for video decoding)
+- Node.js 18+ (only if building the frontend locally)
+
+### 1. Clone and install
+
 ```bash
-# Clone repository and navigate
+git clone https://github.com/nooblypro/NeuroGait.git
 cd NeuroGait
 
-# Create virtual environment
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
+### 2. Download the dataset
 
----
+The model was trained on the public [Figshare Parkinson's turning-task dataset](https://doi.org/10.6084/m9.figshare.14984667). Download a verified subset:
 
-## 3. Dataset Preparation
-
-NeuroGait uses the public **Figshare Parkinson's turning-task dataset** (DOI: [10.6084/m9.figshare.14984667](https://doi.org/10.6084/m9.figshare.14984667)):
-- `PDFEinfo.csv`: 35 subjects, clinical assessment scales and millisecond-accurate FoG episode intervals.
-- `IMU.zip`: 106 acceleration & angular velocity files sampled at 128.0 Hz with synchronized `Freezing event [flag]`.
-- `Videos.zip`: 73 synchronized video trials recorded at ~29.98 FPS (1280x720).
-
-### Download Verified Subjects
 ```bash
-# Downloads PDFEinfo.csv, IMU archive, and sample trial videos (PDFE01_1, PDFE03_1, PDFE09_1)
 python3 scripts/download_dataset.py
 ```
 
-Files will be structured as:
+This creates:
 ```
-data/
-└── raw/
-    ├── PDFEinfo.csv
-    ├── imu/
-    │   ├── SUB01_1.txt
-    │   ├── SUB03_1.txt
-    │   └── SUB09_1.txt
-    └── videos/
-        ├── PDFE01_1.mp4
-        ├── PDFE03_1.mp4
-        └── PDFE09_1.mp4
+data/raw/
+├── PDFEinfo.csv          # Subject info + ground truth FoG timestamps
+├── imu/
+│   ├── SUB01_1.txt       # IMU data for subject 1, trial 1
+│   └── ...
+└── videos/
+    ├── PDFE01_1.mp4      # Video for subject 1, trial 1
+    └── ...
 ```
 
----
+### 3. Run inference on a single trial
 
-## 4. The 8 Canonical Features
-
-The model input is strictly validated to shape `(N, 8)` in this immutable order:
-
-1. `left_ankle_velocity`: Rate of displacement of left ankle ($\text{norm\_units} / \text{s}$)
-2. `right_ankle_velocity`: Rate of displacement of right ankle ($\text{norm\_units} / \text{s}$)
-3. `left_knee_angle`: Interior joint angle at left knee ($0^\circ - 180^\circ$)
-4. `right_knee_angle`: Interior joint angle at right knee ($0^\circ - 180^\circ$)
-5. `stride_width`: Normalized 2D Euclidean distance between left and right ankles
-6. `accel_rms`: Root-mean-square of Anteroposterior linear acceleration: $\sqrt{\frac{1}{M}\sum \text{accel\_y}^2}$
-7. `gyro_x_var`: Unbiased sample variance of Mediolateral angular velocity
-8. `gyro_z_var`: Unbiased sample variance of Superior-inferior angular velocity
-
----
-
-## 5. Execution Commands
-
-### Training
-Train the Phase 1 RandomForest classifier on all verified dataset pairs:
-```bash
-python3 scripts/train.py --dataset-dir data --output models/fog_model.pkl
-```
-
-### Inference
-Run inference on a patient trial:
 ```bash
 python3 scripts/predict.py \
   --video data/raw/videos/PDFE01_1.mp4 \
-  --imu data/raw/imu/SUB01_1.txt \
+  --imu   data/raw/imu/SUB01_1.txt \
   --model models/fog_model.pkl \
-  --output outputs/sample_prediction.json
+  --output outputs/prediction.json
 ```
 
-### Run Streamlit UI (Gate 6 Recorded Mode)
-Launch the Streamlit web application for Recorded Mode gait analysis:
-```bash
-# Configure custom backend URL if needed (defaults to deployed AWS API Gateway):
-export NEUROGAIT_API_URL="https://xwncaenjbd.execute-api.ap-south-1.amazonaws.com"
+This creates a JSON file with timestamped FoG/Borderline/Normal intervals.
 
-# Start Streamlit application
-streamlit run app.py
+### 4. (Optional) Launch the local web UI
+
+```bash
+# FastAPI backend (leave running in a terminal)
+uvicorn src.api:app --reload --port 8000
+
+# Then open frontend/index.html in your browser, or:
+streamlit run app.py   # Streamlit demo alternative
 ```
-Open your browser at `http://localhost:8501`.
 
-### Run Tests
-Execute the comprehensive test suite (76 verified unit and integration tests across Gates 1–6):
+### 5. Run the test suite
+
 ```bash
+# Python tests (unit + integration)
 pytest
+
+# JavaScript tests (timeline/aggregator)
+node tests/test_timeline_aggregator.js
 ```
 
 ---
 
-## 6. Canonical Output JSON Contract
+## Output Format
 
-Outputs conform to the strict JSON contract:
+Every inference run returns a JSON array of classified episodes:
+
 ```json
 [
   {
-    "start": 0.408,
-    "end": 35.708,
-    "confidence": 0.9774,
+    "start": 55.508,
+    "end": 57.608,
+    "confidence": 0.847,
     "type": "FoG",
-    "primary_cue": "accel_rms",
+    "primary_cue": "gyro_z_var",
     "data_mode": "real"
   },
   {
-    "start": 35.008,
-    "end": 36.008,
-    "confidence": 0.4072,
+    "start": 57.608,
+    "end": 58.008,
+    "confidence": 0.512,
     "type": "Borderline",
-    "primary_cue": "gyro_x_var",
-    "data_mode": "real"
-  },
-  {
-    "start": 35.108,
-    "end": 36.608,
-    "confidence": 0.1294,
-    "type": "Normal",
-    "primary_cue": "gyro_x_var",
+    "primary_cue": "accel_rms",
     "data_mode": "real"
   }
 ]
 ```
 
+| Field | Meaning |
+|-------|---------|
+| `start` / `end` | Episode timestamps in seconds from recording start |
+| `confidence` | Model's FoG class probability (0.0–1.0) |
+| `type` | `FoG`, `Borderline`, or `Normal` |
+| `primary_cue` | Feature with highest deviation from the patient's baseline |
+| `data_mode` | `"real"` for live inference |
+
 ---
 
-## 7. Known Limitations (Phase 1 Baseline)
+## Training Your Own Model
 
-1. **Occlusion Sensitivity**: In severe camera occlusions or extreme patient turning angles, pose detection may drop out; the pipeline forward-fills temporary dropouts up to the synchronization boundary.
-2. **Post-Processing Bands**: "Borderline" is a thresholded decision band ($0.40 \le p < 0.60$) designed to surface ambiguous gait transitions; it is not an independently trained clinical label.
-3. **Primary Cue Nature**: The primary cue identifies the feature exhibiting the maximum standardized deviation from the patient's median gait baseline; it represents an algorithmic statistical cue, not a confirmed clinical etiology.
-4. **Scope Constraint**: Phase 1 is strictly a local ML foundation. Cloud infrastructure (AWS ECS, API Gateway, DynamoDB), streaming protocols (WebRTC), and graphical interfaces are intentionally omitted in this phase.
+If you have additional data and want to retrain:
+
+```bash
+python3 scripts/train.py \
+  --dataset-dir data \
+  --output models/my_model.pkl
+```
+
+> ⚠️ Do not overwrite `models/fog_model.pkl` — this is the frozen, verified production model. Use a new filename.
+
+---
+
+## Platform Notes — Why Results Differ Between macOS and Linux
+
+The production canonical environment is **Linux ARM64 (AWS ECS Fargate)**.
+
+If you run inference locally on macOS, you may see minor differences (e.g., a ±0.1s episode boundary shift). This is documented and expected:
+
+- **Linux**: MediaPipe uses TensorFlow Lite XNNPACK CPU delegate → fully deterministic
+- **macOS**: MediaPipe uses Apple Metal GPU shader → small floating-point differences in pose landmarks
+
+These differences only appear near classification threshold boundaries (probabilities close to 0.40 or 0.60). The production verification tests assert exact parity against the Linux container.
+
+### Pinned production dependencies
+
+| Package | Version |
+|---------|---------|
+| `mediapipe` | 1.0.1 |
+| `opencv-python-headless` | 5.0.0.93 |
+| `scikit-learn` | 1.9.1 |
+| `numpy` | 2.4.6 |
+| `pandas` | 3.0.6 |
+| `scipy` | 1.17.1 |
+
+---
+
+## Dataset
+
+This project uses the **public Figshare Parkinson's turning-task dataset**:
+
+> Mancini, M. et al. (2021). *A public dataset of video, acceleration, angular velocity, and clinical scales in individuals with Parkinson's disease during the turning-in-place task.*
+> DOI: [10.6084/m9.figshare.14984667](https://doi.org/10.6084/m9.figshare.14984667)
+
+- **35 subjects** with Parkinson's Disease
+- **106 IMU trials** at 128 Hz (3-axis accelerometer + 3-axis gyroscope)
+- **73 video trials** at ~29.98 FPS (1280×720)
+- **Millisecond-accurate FoG ground truth** annotations per trial
+
+The dataset is publicly available and not redistributed in this repository.
+
+---
+
+## Known Limitations
+
+1. **Research prototype only** — Not validated for clinical use. Do not use for medical decisions.
+
+2. **Occlusion sensitivity** — If the patient is obscured in the video (e.g., furniture, extreme turns), pose detection may fail. The pipeline handles short gaps but not prolonged occlusions.
+
+3. **"Borderline" is not a clinical label** — It means the model's FoG probability fell in the uncertain 0.40–0.60 zone. It is not an independently validated gait state.
+
+4. **Primary cue is statistical, not clinical** — It identifies which of the 8 features had the largest deviation from the patient's rolling baseline. It is a model interpretation aid, not a confirmed neurological cause.
+
+5. **FoG burden is not a severity score** — The percentage shown reflects model-classified time, not clinical FoG severity. It is not a diagnosis or prognostic measure.
+
+6. **Specific IMU format required** — The pipeline expects the Figshare dataset's sensor column names (`ACC AP [g]`, `GYR ML [deg/s]`, `GYR SI [deg/s]`). Other sensor formats require a preprocessing adapter.
+
+---
+
+## Contributing
+
+Contributions, issues, and experiment ideas are welcome.
+
+For any ML changes, please:
+- Never overwrite `models/fog_model.pkl` without a clearly versioned replacement
+- Run `pytest` and `node tests/test_timeline_aggregator.js` before opening a PR
+- Document evaluation methodology and results in `logs/`
+
+---
+
+*Built for Parkinson's Disease gait research. Not a medical device.*
