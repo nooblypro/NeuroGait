@@ -65,6 +65,7 @@ const dom = {
     document.getElementById('b5-word-3'),
   ],
   b5Credits: document.getElementById('b5-credits'),
+  b5CtaBox: document.getElementById('b5-cta-box'),
 };
 
 // State Variables
@@ -335,11 +336,15 @@ function updateBeats(p) {
       dom.b5Words[2].style.transform = `translateY(${lerp(20, 0, w3P)}px)`;
     }
 
-    // Credits reveal
-    const credP = smoothstep(0.960, 0.988, p);
+    // Credits & CTA reveal
+    const credP = smoothstep(0.920, 0.965, p);
     if (dom.b5Credits) {
       dom.b5Credits.style.opacity = credP.toFixed(2);
       dom.b5Credits.style.transform = `translateY(${lerp(18, 0, credP)}px)`;
+    }
+    if (dom.b5CtaBox) {
+      dom.b5CtaBox.style.opacity = credP.toFixed(2);
+      dom.b5CtaBox.style.pointerEvents = credP > 0.5 ? 'auto' : 'none';
     }
 
     // Keep Beat 5 and CTAs fully visible at end of scroll (no blackout fade overlaying buttons)
