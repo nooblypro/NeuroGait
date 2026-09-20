@@ -226,10 +226,189 @@
 
             <!-- NeuroGait Assessment Entry CTAs -->
             <div class="assessment-cta-box" id="b5-cta-box">
-              <a href="#" id="cta-recorded" class="cta-btn cta-primary">[ RECORDED ASSESSMENT ]</a>
-              <a href="#" id="cta-live" class="cta-btn cta-secondary">[ LIVE ASSESSMENT ]</a>
+              <a href="#beat-6" id="cta-recorded" class="cta-btn cta-primary">[ RECORDED ASSESSMENT ]</a>
+              <a href="#beat-6" id="cta-live" class="cta-btn cta-secondary">[ LIVE ASSESSMENT ]</a>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- BEAT 6: BEGIN YOUR ASSESSMENT (INTERACTIVE PIPELINE) -->
+      <section class="beat beat-assessment" id="beat-6">
+        <div class="beat-inner center-content assessment-inner">
+          
+          <div class="assessment-title-group">
+            <h1 class="assessment-title">BEGIN YOUR ASSESSMENT</h1>
+            <p class="assessment-subtitle">Upload your files and run the multimodal assessment</p>
+          </div>
+
+          <!-- Preset Toggle Bar -->
+          <div class="preset-toggle-bar">
+            <button type="button" id="preset-sample-btn" class="preset-btn active">
+              ⭐ Run Verified Demo Sample (PDFE01_1 Patient Trial)
+            </button>
+            <button type="button" id="preset-custom-btn" class="preset-btn">
+              📤 Upload Custom Patient Video & IMU Files
+            </button>
+          </div>
+
+          <!-- Dual File Upload Grid -->
+          <div class="upload-grid" id="upload-grid">
+            <!-- Video Upload Card -->
+            <div class="upload-card" id="card-video">
+              <div class="card-header">
+                <span class="card-title">1. Kinematic Video (.mp4)</span>
+                <span class="info-tooltip" title="High-frame-rate patient turning-task video (MP4 format, max 100 MB)">ⓘ</span>
+              </div>
+              <div class="drop-zone" id="drop-zone-video">
+                <input type="file" id="file-input-video" accept=".mp4" class="file-input-hidden" />
+                <div class="zone-icon">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="3"/><polygon points="10 9 15 12 10 15 10 9"/></svg>
+                </div>
+                <div class="zone-prompt" id="prompt-video">Choose video file</div>
+                <div class="zone-sub">MP4 (Max 100 MB)</div>
+              </div>
+              <div class="file-pill" id="pill-video">
+                <span class="pill-icon">📹</span>
+                <span class="pill-name" id="pill-video-name">PDFE01_1.mp4</span>
+                <span class="pill-size" id="pill-video-size">(80.0 MB)</span>
+              </div>
+            </div>
+
+            <!-- IMU Upload Card -->
+            <div class="upload-card" id="card-imu">
+              <div class="card-header">
+                <span class="card-title">2. Inertial IMU Sensor (.txt, .csv)</span>
+                <span class="info-tooltip" title="128 Hz accelerometer & gyroscope sensor stream (max 10 MB)">ⓘ</span>
+              </div>
+              <div class="drop-zone" id="drop-zone-imu">
+                <input type="file" id="file-input-imu" accept=".txt,.csv" class="file-input-hidden" />
+                <div class="zone-icon">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </div>
+                <div class="zone-prompt" id="prompt-imu">Choose sensor file</div>
+                <div class="zone-sub">TXT or CSV (Max 10 MB)</div>
+              </div>
+              <div class="file-pill" id="pill-imu">
+                <span class="pill-icon">📊</span>
+                <span class="pill-name" id="pill-imu-name">SUB01_1.txt</span>
+                <span class="pill-size" id="pill-imu-size">(1.8 MB)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Execution Environment Radio Options -->
+          <div class="exec-env-box">
+            <div class="exec-title">Execution Environment</div>
+            <div class="exec-radios">
+              <label class="radio-item">
+                <input type="radio" name="exec_env_radio" value="cloud" checked />
+                <span class="radio-disc"></span>
+                <span class="radio-label">☁️ AWS Cloud Pipeline (Production: API Gateway + Lambda + S3 + ECS Fargate + DynamoDB)</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="exec_env_radio" value="local" />
+                <span class="radio-disc"></span>
+                <span class="radio-label">💻 Local Deterministic Engine (Offline Demo Mode / models/fog_model.pkl)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Informational Banner -->
+          <div class="info-banner" id="info-banner">
+            <span class="banner-cloud-icon">☁️</span>
+            <span class="banner-text"><strong>AWS CLOUD INFERENCE:</strong> Production serverless pipeline uploading artifacts to S3, dispatching an ECS Fargate container task, and tracking execution state in DynamoDB.</span>
+          </div>
+
+          <!-- Coral Red Glowing Primary Button -->
+          <button type="button" id="run-assessment-btn" class="run-assessment-btn">
+            🚀 Run Multimodal Assessment
+          </button>
+
+          <!-- Session Stepper & Tracker -->
+          <div class="session-tracker hidden" id="session-tracker">
+            <div class="session-id-line">
+              Current Session: <code id="session-id-val">...</code>
+            </div>
+            <div class="stepper-grid">
+              <div class="step-box" id="step-init"><span class="step-check">⚪</span> Session Initialized</div>
+              <div class="step-box" id="step-upload"><span class="step-check">⚪</span> Uploading to S3</div>
+              <div class="step-box" id="step-confirm"><span class="step-check">⚪</span> Upload Confirmed</div>
+              <div class="step-box" id="step-ecs"><span class="step-check">⚪</span> ECS Fargate ML Active</div>
+              <div class="step-box" id="step-ml"><span class="step-check">⚪</span> ML Inferences Ready</div>
+              <div class="step-box" id="step-bedrock"><span class="step-check">⚪</span> Synthesizing Narrative</div>
+              <div class="step-box" id="step-ready"><span class="step-check">🚀</span> Assessment Ready</div>
+            </div>
+            <div class="step-msg" id="step-msg">Initializing session on cloud control plane...</div>
+          </div>
+
+          <!-- Assessment Results Dashboard -->
+          <div class="results-dashboard hidden" id="results-dashboard">
+            <!-- Banner -->
+            <div class="results-banner banner-success" id="results-banner">
+              <div class="rb-title" id="rb-title">✅ No Overt Freezing of Gait (FoG) Detected</div>
+              <div class="rb-sub" id="rb-sub">Patient maintained continuous rhythmic gait throughout the evaluated recording.</div>
+              <div class="rb-meta" id="rb-meta">
+                <span>Total Episodes: <strong id="rb-fog-count">0</strong> FoG of <strong id="rb-total-count">15</strong> total intervals</span>
+                <span class="rb-divider">•</span>
+                <span>Mean Freezing Confidence: <strong id="rb-avg-conf">0.0%</strong></span>
+                <span class="rb-divider">•</span>
+                <span>Dominant Statistical Cue: <strong id="rb-cue">None</strong></span>
+              </div>
+            </div>
+
+            <!-- Metric Cards Grid -->
+            <div class="metric-grid">
+              <div class="m-card">
+                <div class="m-name">TOTAL INTERVALS</div>
+                <div class="m-num" id="m-total">15</div>
+              </div>
+              <div class="m-card m-alert">
+                <div class="m-name">FOG EPISODES</div>
+                <div class="m-num" id="m-fog">0</div>
+              </div>
+              <div class="m-card m-warn">
+                <div class="m-name">BORDERLINE TRANSITIONS</div>
+                <div class="m-num" id="m-borderline">7</div>
+              </div>
+              <div class="m-card m-pass">
+                <div class="m-name">NORMAL SEGMENTS</div>
+                <div class="m-num" id="m-normal">8</div>
+              </div>
+            </div>
+
+            <!-- Narrative Card -->
+            <div class="narrative-card">
+              <div class="n-head">
+                <span>🧠 CLINICAL NARRATIVE EXPLANATION</span>
+                <span class="n-badge" id="narrative-provider">AWS BEDROCK (Claude 3 Haiku)</span>
+              </div>
+              <blockquote class="n-body" id="narrative-quote">
+                Loading explanation...
+              </blockquote>
+            </div>
+
+            <!-- Chronological Episode Breakdown Table -->
+            <div class="table-card">
+              <div class="t-title">EPISODE BREAKDOWN</div>
+              <div class="t-scroll">
+                <table class="t-table">
+                  <thead>
+                    <tr>
+                      <th>Interval (s)</th>
+                      <th>Type</th>
+                      <th>Confidence</th>
+                      <th>Dominant Cue</th>
+                    </tr>
+                  </thead>
+                  <tbody id="t-tbody">
+                    <!-- Populated via JavaScript -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
