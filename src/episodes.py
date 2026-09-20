@@ -112,7 +112,16 @@ def aggregate_episodes(
     max_merge_gap: float = 1.0,
     data_mode: str = "real",
 ) -> List[Episode]:
-    """Group consecutive windows, merge gaps <= 1s, compute confidence and primary cues.
+    """Resolve overlapping prediction windows and aggregate into non-overlapping temporal episodes.
+
+    Pipeline Stages:
+    1. RAW MODEL WINDOWS: Extract raw window intervals [t_start, t_end] from end timestamps.
+    2. TEMPORALLY RESOLVED WINDOWS: Partition timeline at all window boundaries into elementary
+       non-overlapping intervals. For each interval, determine the resolved state by strongest
+       evidence (highest class-1 probability among overlapping windows).
+    3. FINAL NON-OVERLAPPING EPISODES: Merge adjacent and near-adjacent (gap <= max_merge_gap)
+       resolved intervals of the same type into cohesive clinical episodes with confidence and
+       primary cue calculation.
 
     Args:
         timestamps: 1D array of window END timestamps.
@@ -124,93 +133,141 @@ def aggregate_episodes(
         data_mode: "real" or "synthetic_demo".
 
     Returns:
-        episodes: List of aggregated Episode objects.
+        episodes: Chronologically sorted list of non-overlapping Episode objects.
     """
     N = len(timestamps)
     if N == 0:
         return []
 
-    types = [classify_window_type(float(p)) for p in probabilities]
     subject_median = np.median(X, axis=0)
 
-    # 1. Group consecutive windows of the same type
-    raw_episodes: List[Dict[str, Any]] = []
-    curr_type = types[0]
-    curr_indices = [0]
-    curr_start = max(0.0, float(timestamps[0]) - window_duration)
-    curr_end = float(timestamps[0])
-
-    for i in range(1, N):
+    # ---------------------------------------------------------
+    # Stage 1: Raw Model Windows
+    # ---------------------------------------------------------
+    raw_windows = []
+    for i in range(N):
         t_end = float(timestamps[i])
         t_start = max(0.0, t_end - window_duration)
-        w_type = types[i]
-        gap = t_start - curr_end
+        prob = float(probabilities[i])
+        raw_windows.append({
+            "index": i,
+            "start": t_start,
+            "end": t_end,
+            "prob": prob,
+            "type": classify_window_type(prob),
+        })
 
-        if w_type == curr_type and gap <= max_merge_gap:
-            curr_indices.append(i)
-            curr_end = t_end
+    # ---------------------------------------------------------
+    # Stage 2: Elementary Interval Partitioning & Temporal Resolution
+    # ---------------------------------------------------------
+    # Collect all distinct critical boundary points
+    boundaries = sorted(set(
+        [w["start"] for w in raw_windows] + [w["end"] for w in raw_windows]
+    ))
+
+    elementary_intervals = []
+    for k in range(len(boundaries) - 1):
+        t0 = boundaries[k]
+        t1 = boundaries[k + 1]
+        if t1 - t0 < 1e-6:
+            continue
+
+        # Find active covering raw windows for interval [t0, t1]
+        covering = [
+            w for w in raw_windows
+            if w["start"] <= t0 + 1e-6 and w["end"] >= t1 - 1e-6
+        ]
+
+        if not covering:
+            continue
+
+        # Strongest evidence resolution:
+        # Highest probability among covering windows determines the state
+        max_prob = max(w["prob"] for w in covering)
+        resolved_type = classify_window_type(max_prob)
+
+        # Covering window indices for feature/cue calculation
+        matching_indices = [w["index"] for w in covering if w["type"] == resolved_type]
+        if not matching_indices:
+            matching_indices = [w["index"] for w in covering]
+
+        elementary_intervals.append({
+            "start": t0,
+            "end": t1,
+            "type": resolved_type,
+            "indices": matching_indices,
+        })
+
+    if not elementary_intervals:
+        return []
+
+    # ---------------------------------------------------------
+    # Stage 3: Merge Consecutive Same-Type Intervals into Final Episodes
+    # ---------------------------------------------------------
+    merged_spans = []
+    curr = elementary_intervals[0]
+    curr_start = curr["start"]
+    curr_end = curr["end"]
+    curr_type = curr["type"]
+    curr_indices = set(curr["indices"])
+
+    for interval in elementary_intervals[1:]:
+        gap = interval["start"] - curr_end
+        if interval["type"] == curr_type and gap <= max_merge_gap:
+            curr_end = max(curr_end, interval["end"])
+            curr_indices.update(interval["indices"])
         else:
-            raw_episodes.append({
+            merged_spans.append({
                 "type": curr_type,
                 "start": curr_start,
                 "end": curr_end,
-                "indices": curr_indices,
+                "indices": sorted(curr_indices),
             })
-            curr_type = w_type
-            curr_indices = [i]
-            curr_start = t_start
-            curr_end = t_end
+            curr_start = interval["start"]
+            curr_end = interval["end"]
+            curr_type = interval["type"]
+            curr_indices = set(interval["indices"])
 
-    raw_episodes.append({
+    merged_spans.append({
         "type": curr_type,
         "start": curr_start,
         "end": curr_end,
-        "indices": curr_indices,
+        "indices": sorted(curr_indices),
     })
 
-    # 2. Merge same-type episodes when gap <= max_merge_gap
-    merged = True
-    while merged:
-        merged = False
-        new_episodes: List[Dict[str, Any]] = []
-        i = 0
-        while i < len(raw_episodes):
-            if i + 1 < len(raw_episodes):
-                ep1 = raw_episodes[i]
-                ep2 = raw_episodes[i + 1]
-                gap = ep2["start"] - ep1["end"]
-                if ep1["type"] == ep2["type"] and 0.0 <= gap <= max_merge_gap:
-                    # Merge ep1 and ep2
-                    combined = {
-                        "type": ep1["type"],
-                        "start": ep1["start"],
-                        "end": ep2["end"],
-                        "indices": ep1["indices"] + ep2["indices"],
-                    }
-                    new_episodes.append(combined)
-                    i += 2
-                    merged = True
-                    continue
-            new_episodes.append(raw_episodes[i])
-            i += 1
-        raw_episodes = new_episodes
-
-    # 3. Create Episode instances with confidence and primary cue
+    # Construct final Episode objects
     episodes: List[Episode] = []
-    for ep_dict in raw_episodes:
-        idxs = ep_dict["indices"]
-        conf = float(np.mean([probabilities[idx] for idx in idxs]))
-        X_sub = X[idxs]
+    for span in merged_spans:
+        idxs = span["indices"]
+        # Filter raw windows that overlap this episode span and match the episode type
+        ep_start = span["start"]
+        ep_end = span["end"]
+        ep_type = span["type"]
+
+        overlapping_idxs = [
+            w["index"] for w in raw_windows
+            if w["start"] < ep_end and w["end"] > ep_start and w["type"] == ep_type
+        ]
+        if not overlapping_idxs:
+            overlapping_idxs = [
+                w["index"] for w in raw_windows
+                if w["start"] < ep_end and w["end"] > ep_start
+            ]
+        if not overlapping_idxs:
+            overlapping_idxs = idxs
+
+        conf = float(np.mean([probabilities[idx] for idx in overlapping_idxs]))
+        X_sub = X[overlapping_idxs]
         cue = determine_primary_cue(X_sub, subject_median, scaler)
 
         ep = Episode(
-            start=float(ep_dict["start"]),
-            end=float(ep_dict["end"]),
+            start=round(float(span["start"]), 3),
+            end=round(float(span["end"]), 3),
             confidence=conf,
-            type=ep_dict["type"],
+            type=span["type"],
             primary_cue=cue,
             data_mode=data_mode,
-            window_indices=idxs,
+            window_indices=overlapping_idxs,
         )
         episodes.append(ep)
 

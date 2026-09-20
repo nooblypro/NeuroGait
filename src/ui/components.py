@@ -335,19 +335,31 @@ def render_state_tracker(current_state: str, error_info: Optional[Dict[str, Any]
     st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
 
 
-def render_summary_metrics(summary: Dict[str, Any], episode_count: int):
-    """Render overview summary cards for gait episodes."""
-    fog_count = summary.get("fog_episodes", 0)
-    borderline_count = summary.get("borderline_episodes", 0)
-    normal_count = summary.get("normal_episodes", 0)
+def render_summary_metrics(summary: Dict[str, Any], episodes: List[Dict[str, Any]]):
+    """Render 5 compact overview metrics cards derived strictly from backend non-overlapping episodes."""
+    if episodes:
+        total_dur = max(float(e["end"]) for e in episodes) - min(float(e["start"]) for e in episodes)
+    else:
+        total_dur = summary.get("total_duration", 0.0)
 
-    c1, c2, c3, c4 = st.columns(4)
+    fog_eps = [e for e in episodes if e.get("type") == "FoG"]
+    fog_count = len(fog_eps)
+    fog_dur = sum(float(e["end"]) - float(e["start"]) for e in fog_eps)
+
+    borderline_eps = [e for e in episodes if e.get("type") == "Borderline"]
+    borderline_count = len(borderline_eps)
+
+    normal_eps = [e for e in episodes if e.get("type") == "Normal"]
+    normal_dur = sum(float(e["end"]) - float(e["start"]) for e in normal_eps)
+    normal_pct = (normal_dur / total_dur * 100.0) if total_dur > 0 else 0.0
+
+    c1, c2, c3, c4, c5 = st.columns(5)
 
     with c1:
         st.markdown(
             f'<div class="metric-card">'
-            f'<div class="metric-label">Total Intervals</div>'
-            f'<div class="metric-val" style="color: #0F172A;">{episode_count}</div>'
+            f'<div class="metric-label">Assessment Duration</div>'
+            f'<div class="metric-val" style="color: #0F172A;">{total_dur:.2f} s</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -362,51 +374,59 @@ def render_summary_metrics(summary: Dict[str, Any], episode_count: int):
     with c3:
         st.markdown(
             f'<div class="metric-card">'
-            f'<div class="metric-label">Borderline Transitions</div>'
-            f'<div class="metric-val" style="color: #D97706;">{borderline_count}</div>'
+            f'<div class="metric-label">FoG Duration</div>'
+            f'<div class="metric-val" style="color: #DC2626;">{fog_dur:.2f} s</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
     with c4:
         st.markdown(
             f'<div class="metric-card">'
-            f'<div class="metric-label">Normal Segments</div>'
-            f'<div class="metric-val" style="color: #059669;">{normal_count}</div>'
+            f'<div class="metric-label">Borderline Periods</div>'
+            f'<div class="metric-val" style="color: #D97706;">{borderline_count}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with c5:
+        st.markdown(
+            f'<div class="metric-card">'
+            f'<div class="metric-label">Normal Coverage</div>'
+            f'<div class="metric-val" style="color: #059669;">{normal_dur:.2f} s<br><span style="font-size: 0.85rem; color: #475569;">({normal_pct:.1f}%)</span></div>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
 
 def render_timeline_visualization(episodes: List[Dict[str, Any]]):
-    """Render interactive color-coded visual timeline from canonical episode data."""
+    """Render interactive color-coded chronological timeline from canonical non-overlapping backend episodes."""
     if not episodes:
+        st.info("No timeline data available for this assessment.")
         return
 
-    st.markdown("### 📊 Episode Sequence Timeline")
-    st.caption("Visual distribution of classified intervals across the recorded trial duration:")
+    st.caption("Chronological non-overlapping sequence of resolved model states across trial duration:")
 
-    trial_start = min(e["start"] for e in episodes)
-    trial_end = max(e["end"] for e in episodes)
+    trial_start = min(float(e["start"]) for e in episodes)
+    trial_end = max(float(e["end"]) for e in episodes)
     total_dur = max(0.01, trial_end - trial_start)
 
-    # Sort episodes by start timestamp
+    # Sort episodes chronologically by start timestamp
     sorted_eps = sorted(episodes, key=lambda x: (x["start"], x["end"]))
 
     # Build multi-bar timeline representation
     bars_html = []
     for ep in sorted_eps:
         ep_type = ep.get("type", "Normal")
-        start = ep["start"]
-        end = ep["end"]
-        conf = ep.get("confidence", 0.0)
+        start = float(ep["start"])
+        end = float(ep["end"])
+        conf = float(ep.get("confidence", 0.0))
         cue = ep.get("primary_cue", "none")
         cue_lbl = CUE_LABELS.get(cue, cue)
 
         dur = max(0.01, end - start)
-        width_pct = max(1.0, (dur / total_dur) * 100.0)
+        width_pct = max(0.5, (dur / total_dur) * 100.0)
 
         color = COLOR_FOG if ep_type == "FoG" else (COLOR_BORDERLINE if ep_type == "Borderline" else COLOR_NORMAL)
-        title_attr = f"{ep_type}: {start:.2f}s–{end:.2f}s ({dur:.2f}s) | Conf: {conf*100:.1f}% | Cue: {cue_lbl}"
+        title_attr = f"{ep_type}: {start:.2f}s–{end:.2f}s ({dur:.2f}s) | Model confidence: {conf*100:.1f}% | Primary statistical cue: {cue_lbl}"
 
         bars_html.append(
             f'<div class="timeline-bar" style="width: {width_pct:.2f}%; background-color: {color};" title="{title_attr}">'
@@ -420,65 +440,87 @@ def render_timeline_visualization(episodes: List[Dict[str, Any]]):
     # Legend
     leg1, leg2, leg3 = st.columns(3)
     with leg1:
-        st.markdown(f"<span style='color: {COLOR_FOG}; font-weight: 700;'>■ [F] Freezing of Gait (FoG)</span> (p ≥ 0.60)", unsafe_allow_html=True)
+        st.markdown(f"<span style='color: {COLOR_FOG}; font-weight: 700;'>■ FoG Episodes</span> (Model confidence ≥ 0.60)", unsafe_allow_html=True)
     with leg2:
-        st.markdown(f"<span style='color: {COLOR_BORDERLINE}; font-weight: 700;'>■ [B] Borderline Transition</span> (0.40 ≤ p < 0.60)", unsafe_allow_html=True)
+        st.markdown(f"<span style='color: {COLOR_BORDERLINE}; font-weight: 700;'>■ Borderline Periods</span> (0.40 ≤ Model confidence < 0.60)", unsafe_allow_html=True)
     with leg3:
-        st.markdown(f"<span style='color: {COLOR_NORMAL}; font-weight: 700;'>■ [N] Normal Gait</span> (p < 0.40)", unsafe_allow_html=True)
+        st.markdown(f"<span style='color: {COLOR_NORMAL}; font-weight: 700;'>■ Normal Gait</span> (Model confidence < 0.40)", unsafe_allow_html=True)
 
 
-def render_episodes_table(episodes: List[Dict[str, Any]]):
-    """Render sortable, filterable table of canonical episodes with plain language formatting."""
-    st.markdown("### 📋 Detailed Gait Episode Log")
+def render_fog_episodes_section(episodes: List[Dict[str, Any]]):
+    """Render dedicated section for final non-overlapping Freezing of Gait (FoG) episodes."""
+    fog_eps = [e for e in episodes if e.get("type") == "FoG"]
 
-    filter_type = st.selectbox(
-        "Filter by Episode Type",
-        options=["All Types", "FoG", "Borderline", "Normal"],
-        index=0,
-    )
+    st.caption("Primary statistical cue indicates the specific feature with largest standardized deviation from subject median. It is a mathematical attribution, not a clinical cause.")
+
+    if not fog_eps:
+        st.info("No FoG episodes detected in this assessment.")
+        return
 
     records = []
-    for idx, ep in enumerate(episodes, start=1):
-        ep_type = ep.get("type", "Normal")
-        if filter_type != "All Types" and ep_type != filter_type:
-            continue
-
-        start = ep["start"]
-        end = ep["end"]
+    for idx, ep in enumerate(fog_eps, start=1):
+        start = float(ep["start"])
+        end = float(ep["end"])
         duration = round(end - start, 3)
-        conf = ep.get("confidence", 0.0)
+        conf = float(ep.get("confidence", 0.0))
         cue = ep.get("primary_cue", "none")
         cue_formatted = CUE_LABELS.get(cue, cue)
         mode = ep.get("data_mode", "real")
 
-        type_badge = "🚨 FoG" if ep_type == "FoG" else ("⚠️ Borderline" if ep_type == "Borderline" else "✅ Normal")
-
         records.append({
-            "Interval #": idx,
-            "Classification": type_badge,
-            "Start Time": f"{start:.3f} s",
-            "End Time": f"{end:.3f} s",
-            "Duration": f"{duration:.3f} s",
-            "Confidence": f"{conf * 100:.1f}% ({conf:.4f})",
+            "FoG Episode #": idx,
+            "Start Time": f"{start:.2f} s",
+            "End Time": f"{end:.2f} s",
+            "Duration": f"{duration:.2f} s",
+            "Model Confidence": f"{conf * 100:.1f}% ({conf:.4f})",
             "Primary Statistical Cue": cue_formatted,
             "Data Mode": mode,
         })
 
-    if records:
-        df = pd.DataFrame(records)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-    else:
-        st.info("No episodes match the selected filter.")
+    df = pd.DataFrame(records)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_borderline_section(episodes: List[Dict[str, Any]]):
+    """Render dedicated section for Borderline transition periods."""
+    borderline_eps = [e for e in episodes if e.get("type") == "Borderline"]
+
+    st.caption("Borderline indicates model confidence between 0.40 and 0.60. It is a model classification band, not a clinical diagnosis.")
+
+    if not borderline_eps:
+        st.info("No Borderline transition periods detected in this assessment.")
+        return
+
+    records = []
+    for idx, ep in enumerate(borderline_eps, start=1):
+        start = float(ep["start"])
+        end = float(ep["end"])
+        duration = round(end - start, 3)
+        conf = float(ep.get("confidence", 0.0))
+        cue = ep.get("primary_cue", "none")
+        cue_formatted = CUE_LABELS.get(cue, cue)
+        mode = ep.get("data_mode", "real")
+
+        records.append({
+            "Borderline Period #": idx,
+            "Start Time": f"{start:.2f} s",
+            "End Time": f"{end:.2f} s",
+            "Duration": f"{duration:.2f} s",
+            "Model Confidence": f"{conf * 100:.1f}% ({conf:.4f})",
+            "Primary Statistical Cue": cue_formatted,
+            "Data Mode": mode,
+        })
+
+    df = pd.DataFrame(records)
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
 
 def render_explanation_section(explanation: Optional[Dict[str, Any]]):
     """Render clinical narrative explanation, provider attribution, and safety disclaimer."""
-    st.markdown("### 📝 Clinical Assessment Narrative")
-
     if not explanation or explanation.get("status") != "SUCCESS":
-        status_str = explanation.get("status", "UNAVAILABLE") if explanation else "UNAVAILABLE"
-        reason_str = explanation.get("reason", "No narrative returned by backend.") if explanation else "No narrative available."
-        st.warning(f"Explanatory narrative is currently **{status_str}** ({reason_str}). Deterministic ML predictions remain fully valid above.")
+        reason_str = explanation.get("reason", "No narrative returned by backend.") if explanation else "No narrative available from backend."
+        st.warning(f"Explanation unavailable ({reason_str})")
+        st.caption("Deterministic machine learning prediction results above remain fully valid.")
         return
 
     provider = explanation.get("provider", "deterministic_rule")
@@ -487,7 +529,7 @@ def render_explanation_section(explanation: Optional[Dict[str, Any]]):
     cached = explanation.get("cached", False)
     disclaimer = explanation.get("clinical_disclaimer", "")
 
-    # Provider attribution badge
+    # Provider attribution badge (truthful backend reporting)
     if provider == "deterministic_rule":
         prov_desc = "Deterministic Rule Engine (Reproducible, zero hallucination risk)"
     elif provider == "bedrock_claude":
@@ -517,6 +559,88 @@ def render_explanation_section(explanation: Optional[Dict[str, Any]]):
             f'<div class="disclaimer-box"><strong>CLINICAL SAFETY DISCLOSURE:</strong> {disclaimer}</div>',
             unsafe_allow_html=True,
         )
+
+
+def render_technical_details_section(results: Dict[str, Any]):
+    """Render technical details expander for developer and audit transparency."""
+    episodes = results.get("episodes", [])
+    summary = results.get("summary", {})
+    explanation = results.get("explanation", {})
+    diag = results.get("diagnostics", {})
+    exec_target = results.get("execution_target", "AWS_CLOUD")
+
+    raw_windows_count = diag.get("fog_windows", 0) + diag.get("normal_windows", 0)
+    if raw_windows_count == 0:
+        raw_windows_count = diag.get("fused_rows", len(episodes))
+
+    with st.expander("🛠️ Technical Details", expanded=False):
+        st.markdown("#### Pipeline Architecture & Execution Details")
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Raw model windows", raw_windows_count, help="Count of raw sliding 1.0s prediction windows evaluated by the model")
+        with col2:
+            st.metric("Final episodes", len(episodes), help="Final non-overlapping aggregated episodes")
+        with col3:
+            st.metric("Model version", "RandomForest (fog_model.pkl)")
+        with col4:
+            st.metric("Data mode", episodes[0].get("data_mode", "real") if episodes else "real")
+
+        st.markdown("---")
+        d1, d2, d3, d4 = st.columns(4)
+        with d1:
+            st.metric("Explanation provider", explanation.get("provider", "deterministic_rule") if explanation else "N/A")
+        with d2:
+            st.metric("Execution target", exec_target)
+        with d3:
+            st.metric("Frames processed", diag.get("frames_processed", "N/A"))
+        with d4:
+            st.metric("IMU samples", diag.get("imu_samples_received", "N/A"))
+
+        st.markdown("---")
+        render_multimodal_pipeline_flow()
+
+
+def render_results_dashboard(results: Dict[str, Any]):
+    """Render the full results section according to the required 6-stage results hierarchy."""
+    episodes = results.get("episodes", [])
+    summary = results.get("summary", {})
+    explanation = results.get("explanation")
+    exec_mode = "local" if results.get("execution_target") == "LOCAL_DETERMINISTIC_ENGINE" or results.get("session_id", "").startswith("local-") else "cloud"
+
+    # 1. ASSESSMENT SUMMARY
+    st.markdown("### 1. Assessment Summary")
+    render_session_assessment_banner(summary, episodes, exec_mode=exec_mode)
+    render_summary_metrics(summary, episodes)
+
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
+
+    # 2. TEMPORAL ASSESSMENT TIMELINE
+    st.markdown("### 2. Temporal Assessment Timeline")
+    render_timeline_visualization(episodes)
+
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
+
+    # 3. FOG EPISODES
+    st.markdown("### 3. FoG Episodes")
+    render_fog_episodes_section(episodes)
+
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
+
+    # 4. BORDERLINE PERIODS
+    st.markdown("### 4. Borderline Periods")
+    render_borderline_section(episodes)
+
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
+
+    # 5. AI EXPLANATION
+    st.markdown("### 5. AI Explanation")
+    render_explanation_section(explanation)
+
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
+
+    # 6. TECHNICAL DETAILS
+    render_technical_details_section(results)
 
 
 def render_past_session_lookup(api_client, on_load_session):

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroGait — Multimodal Movement Assessment</title>
+  <meta name="description" content="A cinematic, scroll-controlled interactive website for NeuroGait: Multimodal Freezing-of-Gait assessment combining video pose extraction, wearable IMU telemetry, and Amazon Bedrock explanation." />
+
+  <!-- Google Fonts: Space Grotesk, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- Scroll Track (Compact 480vh for fast, fluid cinematic scrolling) -->
+  <div id="scroll-track" aria-hidden="true"></div>
+
+  <!-- Viewport-Locked Cinema Stage -->
+  <div id="viewport-stage">
+
+    <!-- 0. High-Quality Scroll-Scrubbed Background Video -->
+    <div class="video-container" id="video-container">
+      <video
+        id="bg-video"
+        muted
+        playsinline
+        preload="auto"
+        disablepictureinpicture
+      >
+        <source src="/newfinal.mp4" type="video/mp4" />
+      </video>
+      <div class="vignette-layer" id="vignette-layer"></div>
+    </div>
+
+    <!-- 1. Ambient Minimalist Telemetry Watermarks -->
+    <header class="hud-header" id="hud-header">
+      <div class="brand-container" id="brand-container">
+        <div class="brand-title">NEUROGAIT</div>
+        <div class="brand-meta">MULTIMODAL OBSERVER</div>
+      </div>
+      <div class="hud-status">
+        <span class="pulse-dot"></span>
+        <span class="hud-mono" id="hud-status-text">VIDEO SCRUB ACTIVE</span>
+        <span class="hud-separator">|</span>
+        <span class="hud-mono" id="hud-timecode">0.00s</span>
+      </div>
+    </header>
+
+    <footer class="hud-footer" id="hud-footer">
+      <div class="hud-coord">
+        <span class="hud-label">CHAPTER PROGRESS</span>
+        <span class="hud-mono" id="hud-progress">1 / 5 // HERO</span>
+      </div>
+      <div class="hud-legend">
+        <span class="legend-item"><span class="legend-box video-accent"></span> VIDEO POSE</span>
+        <span class="legend-item"><span class="legend-box imu-accent"></span> IMU 6-AXIS</span>
+        <span class="legend-item"><span class="legend-box fused-accent"></span> FUSED VECTOR</span>
+      </div>
+    </footer>
+
+    <!-- 2. 5 Major Narrative Beats (Unified Continuous Film) -->
+    <main class="narrative-stage" id="narrative-stage">
+
+      <!-- BEAT 1: HERO -->
+      <section class="beat beat-hero" id="beat-1">
+        <div class="beat-inner hero-right-content">
+          <div class="hero-chip">Multimodal movement assessment</div>
+          <h1 class="hero-title" id="hero-title">NEUROGAIT</h1>
+          <p class="hero-statement">Movement is information.</p>
+          <div class="scroll-hint">
+            <span class="scroll-arrow">↓</span>
+            <span class="scroll-text">SCROLL TO OBSERVE</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- BEAT 2: TWO MODALITIES → 8 FEATURES -->
+      <section class="beat beat-modalities-features" id="beat-2">
+        <div class="beat-inner center-content">
+          <!-- Phase 2A: VIDEO + IMU converging to 02 MODALITIES -->
+          <div class="modalities-phase" id="b2-modalities">
+            <div class="mod-pill-group" id="b2-pill-group">
+              <span class="mod-pill mod-vid">VIDEO</span>
+              <span class="mod-plus">+</span>
+              <span class="mod-pill mod-imu">IMU</span>
+            </div>
+            <div class="mod-reveal" id="b2-mod-reveal">
+              <div class="massive-number gold-num">02</div>
+              <h2 class="beat-heading">MODALITIES</h2>
+              <p class="beat-sub">Two synchronized views of the same movement.</p>
+            </div>
+          </div>
+
+          <!-- Phase 2B: Seamless transition to 08 FUSED FEATURES with floating annotations -->
+          <div class="features-phase" id="b2-features">
+            <div class="feat-center" id="b2-feat-center">
+              <div class="massive-number white-num">08</div>
+              <h2 class="beat-heading">FUSED FEATURES</h2>
+              <p class="beat-sub">Synchronized eight-dimensional movement state vector</p>
+            </div>
+
+            <!-- Floating feature labels positioned in negative space around the walking subject -->
+            <div class="anno-tags" id="b2-anno-tags">
+              <div class="anno-tag tag-al" id="tag-1">left_ankle_velocity</div>
+              <div class="anno-tag tag-ar" id="tag-2">right_ankle_velocity</div>
+              <div class="anno-tag tag-kl" id="tag-3">left_knee_angle</div>
+              <div class="anno-tag tag-kr" id="tag-4">right_knee_angle</div>
+              <div class="anno-tag tag-sw" id="tag-5">stride_width</div>
+              <div class="anno-tag tag-acc" id="tag-6">accel_rms</div>
+              <div class="anno-tag tag-gx" id="tag-7">gyro_x_var</div>
+              <div class="anno-tag tag-gz" id="tag-8">gyro_z_var</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BEAT 3: SYNCHRONIZE → DETECT -->
+      <section class="beat beat-sync-detect" id="beat-3">
+        <div class="beat-inner center-content">
+          <!-- Phase 3A: Two minimal timelines aligning -->
+          <div class="sync-phase" id="b3-sync">
+            <div class="sync-track-duo">
+              <div class="sync-bar-wrap">
+                <span class="sync-label">VIDEO</span>
+                <div class="sync-track"><div class="sync-pulse vid-pulse" id="b3-vid-pulse"></div></div>
+              </div>
+              <div class="sync-bar-wrap">
+                <span class="sync-label">IMU</span>
+                <div class="sync-track"><div class="sync-pulse imu-pulse" id="b3-imu-pulse"></div></div>
+              </div>
+            </div>
+            <div class="sync-badge" id="b3-sync-badge">
+              <div class="massive-number gold-num">±0.1s</div>
+              <h2 class="beat-heading">TEMPORAL ALIGNMENT</h2>
+            </div>
+          </div>
+
+          <!-- Phase 3B: Single movement timeline -> Highlight -> 92% Confidence -->
+          <div class="detect-phase" id="b3-detect">
+            <div class="timeline-visual-box">
+              <div class="tl-title-row">
+                <span class="tl-mode-label">MOVEMENT TIMELINE</span>
+                <span class="tl-window-label">EPISODE WINDOW: 05.2s — 06.8s</span>
+              </div>
+              <div class="single-timeline">
+                <div class="tl-cursor" id="b3-cursor"></div>
+                <div class="tl-highlight" id="b3-highlight">
+                  <span class="tl-stamp s-start">05.2s</span>
+                  <span class="tl-stamp s-end">06.8s</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="detect-bottom-split">
+              <div class="detect-callout-panel" id="b3-callout-panel">
+                <div class="episode-pill">MODEL-DETECTED EPISODE</div>
+                <h2 class="beat-heading alert-heading">POSSIBLE FoG EPISODE</h2>
+                <div class="episode-interval">05.2s — 06.8s</div>
+                <p class="episode-disclaimer">Non-diagnostic assessment derived from continuous gait window classification.</p>
+              </div>
+
+              <div class="confidence-panel" id="b3-conf-panel">
+                <div class="massive-number gold-num" id="b3-conf-num">92%</div>
+                <div class="conf-heading">CONFIDENCE</div>
+                <div class="conf-sub">Mean class-1 probability across episode windows</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BEAT 4: EVIDENCE → EXPLANATION -->
+      <section class="beat beat-evidence-bedrock" id="beat-4">
+        <div class="beat-inner center-content">
+          <div class="evidence-bedrock-stage">
+            <!-- Phase 4A: Structured ML Evidence Console -->
+            <div class="evidence-panel" id="b4-evidence-panel">
+              <div class="panel-header">
+                <span class="header-indicator"></span>
+                <span class="header-text">STRUCTURED EVIDENCE</span>
+              </div>
+              <div class="console-body" id="b4-console-body">
+                <div class="con-line" id="cl-1"><span class="con-key">type:</span> <span class="con-val">FoG</span></div>
+                <div class="con-line" id="cl-2"><span class="con-key">confidence:</span> <span class="con-val">0.92</span></div>
+                <div class="con-line" id="cl-3"><span class="con-key">interval:</span> <span class="con-val">05.2s — 06.8s</span></div>
+                <div class="con-line" id="cl-4"><span class="con-key">primary_cue:</span> <span class="con-val">left_ankle_velocity</span></div>
+              </div>
+            </div>
+
+            <!-- Arrow connector -->
+            <div class="synthesis-arrow" id="b4-arrow">↓</div>
+
+            <!-- Phase 4B: Amazon Bedrock Grounded Explanation -->
+            <div class="bedrock-panel" id="b4-bedrock-panel">
+              <div class="bedrock-header">
+                <h2 class="bedrock-title">AMAZON BEDROCK</h2>
+                <div class="bedrock-mantra">ML detects. AI explains.</div>
+              </div>
+              <blockquote class="bedrock-quote">
+                “A possible freezing episode was detected during this interval (05.2s — 06.8s), primarily associated with altered left ankle movement.”
+              </blockquote>
+              <div class="bedrock-note">
+                Explaining structured machine evidence. Grounded explanation without diagnostic claims.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BEAT 5: ENDING -->
+      <section class="beat beat-ending" id="beat-5">
+        <div class="beat-inner center-content">
+          <div class="kinetic-words-group">
+            <div class="k-word" id="b5-word-1">Movement.</div>
+            <div class="k-word" id="b5-word-2">Measured.</div>
+            <div class="k-word" id="b5-word-3">Explained.</div>
+          </div>
+
+          <div class="credits-box" id="b5-credits">
+            <h2 class="credits-brand">NEUROGAIT</h2>
+            <p class="credits-lead">Made with love by</p>
+            <div class="credits-names">Devika Anup × Shriram</div>
+            <div class="credits-year">2026</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Outro Blackout Curtain for smooth finale -->
+    <div class="blackout-curtain" id="blackout-curtain"></div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

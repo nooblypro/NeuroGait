@@ -12,18 +12,22 @@ from typing import Any, Dict, Optional
 import streamlit as st
 
 from src.ui.api_client import NeuroGaitAPIClient
+from src.ui.animated_hero import render_animated_hero
 from src.ui.components import (
     inject_custom_styles,
-    render_episodes_table,
+    render_borderline_section,
     render_explanation_section,
+    render_fog_episodes_section,
     render_header,
     render_judge_cheat_sheet,
     render_mode_selector,
     render_multimodal_pipeline_flow,
     render_past_session_lookup,
+    render_results_dashboard,
     render_session_assessment_banner,
     render_state_tracker,
     render_summary_metrics,
+    render_technical_details_section,
     render_timeline_visualization,
 )
 
@@ -84,6 +88,9 @@ def reset_assessment():
 def main():
     init_session_state()
     client: NeuroGaitAPIClient = st.session_state.api_client
+
+    # Render Animated 5-Beat Scroll Intro Experience
+    render_animated_hero()
 
     # Render Header & Mode Selector
     render_header()
@@ -182,35 +189,7 @@ def main():
         # Render Results Dashboard if COMPLETE
         if st.session_state.results and st.session_state.backend_state == "COMPLETE":
             st.markdown("---")
-            results = st.session_state.results
-            episodes = results.get("episodes", [])
-            summary = results.get("summary", {})
-            episode_count = results.get("episode_count", len(episodes))
-            explanation = results.get("explanation")
-            diag = results.get("diagnostics", {})
-
-            st.markdown("#### 📊 Measured Live Stream Diagnostics")
-            d1, d2, d3, d4 = st.columns(4)
-            with d1:
-                st.metric("Frames Processed", diag.get("frames_processed", 0))
-            with d2:
-                st.metric("IMU Samples", diag.get("imu_samples_received", 0))
-            with d3:
-                st.metric("Observed FPS", f"{diag.get('observed_fps', 0):.2f}")
-            with d4:
-                st.metric("Processing Latency", f"{diag.get('processing_latency_sec', 0):.4f} s")
-
-            st.markdown("---")
-            render_session_assessment_banner(summary, episodes, exec_mode="local")
-            render_summary_metrics(summary, episode_count)
-            st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-            render_multimodal_pipeline_flow()
-            st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-            render_timeline_visualization(episodes)
-            st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-            render_episodes_table(episodes)
-            st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-            render_explanation_section(explanation)
+            render_results_dashboard(st.session_state.results)
 
         return
 
@@ -528,38 +507,7 @@ def main():
     # Render Results Dashboard (when results are available)
     if st.session_state.results and st.session_state.backend_state == "COMPLETE":
         st.markdown("---")
-        results = st.session_state.results
-        episodes = results.get("episodes", [])
-        summary = results.get("summary", {})
-        episode_count = results.get("episode_count", len(episodes))
-        explanation = results.get("explanation")
-        exec_mode = "local" if results.get("execution_target") == "LOCAL_DETERMINISTIC_ENGINE" else "cloud"
-
-        # 1. Overall Session Result Banner
-        render_session_assessment_banner(summary, episodes, exec_mode=exec_mode)
-
-        # 2. Key Metrics Summary Cards
-        render_summary_metrics(summary, episode_count)
-
-        st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-
-        # 3. Multimodal Pipeline Architecture Flow
-        render_multimodal_pipeline_flow()
-
-        st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-
-        # 4. Episode Sequence Timeline
-        render_timeline_visualization(episodes)
-
-        st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-
-        # 5. Detailed Episode Table
-        render_episodes_table(episodes)
-
-        st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-
-        # 6. Clinical Assessment Narrative & Disclaimer
-        render_explanation_section(explanation)
+        render_results_dashboard(st.session_state.results)
 
 
 if __name__ == "__main__":

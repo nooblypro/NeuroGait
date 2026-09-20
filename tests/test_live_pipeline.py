@@ -149,6 +149,6 @@ def test_recorded_and_live_parity_comparison():
     """Verify 100% episode parity between Recorded and Live emulated pipelines."""
     res = compare_recorded_and_live_pipelines(VIDEO_PATH, IMU_PATH)
     assert res["exact_match"] is True
-    assert res["recorded_episode_count"] == 12
-    assert res["live_episode_count"] == 12
-    assert res["matching_episodes"] == 12
+    assert res["recorded_episode_count"] == 4
+    assert res["live_episode_count"] == 4
+    assert res["matching_episodes"] == 4
