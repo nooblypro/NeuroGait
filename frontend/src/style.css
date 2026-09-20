@@ -1048,7 +1048,7 @@ body {
   font-weight: 400;
   color: var(--text-secondary);
   font-style: italic;
-  margin-top: 0.5rem;
+  margin-top: 2rem;
   text-shadow: var(--text-shadow-deep);
 }
 
