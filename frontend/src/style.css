@@ -1463,6 +1463,79 @@ body {
   line-height: 1.6;
 }
 
+.timeline-card {
+  background: rgba(12, 16, 26, 0.85);
+  border: 1px solid var(--line-light);
+  border-radius: 8px;
+  padding: 1.6rem;
+  text-align: left;
+}
+
+.timeline-bar-wrapper {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line-subtle);
+  border-radius: 6px;
+  padding: 4px;
+  overflow: hidden;
+  margin-bottom: 0.85rem;
+}
+
+.timeline-bar {
+  display: flex;
+  height: 28px;
+  width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.t-segment {
+  height: 100%;
+  transition: opacity 0.2s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.t-segment:hover {
+  opacity: 0.85;
+  filter: brightness(1.2);
+}
+
+.t-segment.norm {
+  background: #3fb950;
+}
+
+.t-segment.bord {
+  background: #fbbf24;
+}
+
+.t-segment.fog {
+  background: #f87171;
+}
+
+.timeline-legend {
+  display: flex;
+  gap: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.t-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.t-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.norm-box { background: #3fb950; }
+.bord-box { background: #fbbf24; }
+.fog-box { background: #f87171; }
+
 .table-card {
   background: rgba(12, 16, 26, 0.85);
   border: 1px solid var(--line-light);

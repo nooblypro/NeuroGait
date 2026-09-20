@@ -49,15 +49,28 @@ service-account*.json
 *.pem
 *.key
 
-# Large Raw Datasets & Clinical Media (837 MB)
+# Large Raw Datasets, Clinical Media & Intermediate Data
 data/raw/
+data/processed/
+data/test_inputs/
 data/external_validation/*
 !data/external_validation/manifest.json
-data/*.zip
+*.mp4
+*.avi
+*.mov
+*.zip
+*.xls
+*.xlsx
 
-# Public Third-Party Task Models (MediaPipe 9MB binary)
+# Model binaries & checkpoints
+*.pkl
+*.pt
+*.pth
 models/*.task
+!models/fog_model.pkl
 
 # Generated Run Outputs & Build Artifacts
 outputs/*
 !outputs/.gitkeep
+!outputs/evaluation_summary.json
+!outputs/ground_truth_predictions.csv

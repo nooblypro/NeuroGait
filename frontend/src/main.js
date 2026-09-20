@@ -3,6 +3,8 @@
  * Scroll-controlled cinematic storytelling leading into the interactive assessment UI.
  */
 
+import { aggregateTimeline, computeAggregatedStats, generateModelGroundedNarrative } from './timeline_aggregator.js';
+
 // Math Utility Helpers
 const clamp = (val, min = 0, max = 1) => Math.min(Math.max(val, min), max);
 const lerp = (start, end, amt) => (1 - amt) * start + amt * end;
@@ -477,16 +479,23 @@ function setupAssessmentEngine() {
       resultsDashboard.classList.add('hidden');
       resetStepper();
 
-      const vName = activeMode === 'sample' ? 'PDFE01_1.mp4' : (selectedVideoFile ? selectedVideoFile.name : 'video.mp4');
-      const iName = activeMode === 'sample' ? 'SUB01_1.txt' : (selectedImuFile ? selectedImuFile.name : 'imu.txt');
-      const vSize = activeMode === 'sample' ? 83886080 : (selectedVideoFile ? selectedVideoFile.size : 1000000);
-      const iSize = activeMode === 'sample' ? 1900000 : (selectedImuFile ? selectedImuFile.size : 100000);
+      const videoFileToUpload = selectedVideoFile || (fileInputVideo && fileInputVideo.files && fileInputVideo.files[0]) || null;
+      const imuFileToUpload = selectedImuFile || (fileInputImu && fileInputImu.files && fileInputImu.files[0]) || null;
 
       const API_BASE = import.meta.env.VITE_API_URL || 'https://xwncaenjbd.execute-api.ap-south-1.amazonaws.com';
 
       try {
         if (execEnv === 'cloud') {
-          updateStep('step-init', 'active', 'Initializing session on cloud control plane...');
+          if (!videoFileToUpload || !imuFileToUpload) {
+            throw new Error('Please select both a video (.mp4) and an IMU (.txt/.csv) file to run AWS Cloud Inference.');
+          }
+
+          const vName = videoFileToUpload.name;
+          const iName = imuFileToUpload.name;
+          const vSize = videoFileToUpload.size;
+          const iSize = imuFileToUpload.size;
+
+          updateStep('step-init', 'active', `Initializing AWS session for ${vName} (${(vSize / (1024 * 1024)).toFixed(1)} MB)...`);
           const sessRes = await fetch(`${API_BASE}/sessions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -497,70 +506,115 @@ function setupAssessmentEngine() {
               imu_size_bytes: iSize
             })
           });
+          if (!sessRes.ok) {
+            const errTxt = await sessRes.text();
+            throw new Error(`Failed to initialize session (HTTP ${sessRes.status}): ${errTxt}`);
+          }
           const sessData = await sessRes.json();
           if (!sessData.session_id) throw new Error(sessData.message || 'Session creation failed');
           const sid = sessData.session_id;
           sessionIdVal.textContent = sid;
           updateStep('step-init', 'done');
 
-          updateStep('step-upload', 'active', 'Uploading video and IMU artifacts to S3...');
-          if (activeMode === 'custom' && selectedVideoFile && sessData.upload_urls?.video) {
-            await fetch(sessData.upload_urls.video, { method: 'PUT', body: selectedVideoFile, headers: { 'Content-Type': 'video/mp4' } });
+          updateStep('step-upload', 'active', `Uploading real files to S3 (${vName}, ${iName})...`);
+          if (!sessData.upload_urls?.video || !sessData.upload_urls?.imu) {
+            throw new Error('API Gateway did not return presigned S3 upload URLs.');
           }
-          if (activeMode === 'custom' && selectedImuFile && sessData.upload_urls?.imu) {
-            await fetch(sessData.upload_urls.imu, { method: 'PUT', body: selectedImuFile, headers: { 'Content-Type': 'text/plain' } });
+
+          const vUploadRes = await fetch(sessData.upload_urls.video, {
+            method: 'PUT',
+            body: videoFileToUpload,
+            headers: { 'Content-Type': 'video/mp4' }
+          });
+          if (!vUploadRes.ok) {
+            throw new Error(`S3 video upload failed with HTTP status ${vUploadRes.status}`);
+          }
+
+          const iUploadRes = await fetch(sessData.upload_urls.imu, {
+            method: 'PUT',
+            body: imuFileToUpload,
+            headers: { 'Content-Type': 'text/plain' }
+          });
+          if (!iUploadRes.ok) {
+            throw new Error(`S3 IMU upload failed with HTTP status ${iUploadRes.status}`);
           }
           updateStep('step-upload', 'done');
 
-          updateStep('step-confirm', 'active', 'Confirming upload in S3...');
-          await fetch(`${API_BASE}/sessions/confirm-upload`, {
+          updateStep('step-confirm', 'active', 'Confirming S3 upload and updating DynamoDB state to UPLOADED...');
+          const confRes = await fetch(`${API_BASE}/sessions/confirm-upload`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sid })
           });
+          if (!confRes.ok) {
+            const cErr = await confRes.text();
+            throw new Error(`Upload confirmation failed (HTTP ${confRes.status}): ${cErr}`);
+          }
           updateStep('step-confirm', 'done');
 
           updateStep('step-ecs', 'active', 'Dispatching ECS Fargate ML container task...');
-          await fetch(`${API_BASE}/inference/start`, {
+          const startRes = await fetch(`${API_BASE}/inference/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sid })
           });
+          if (!startRes.ok) {
+            const sErr = await startRes.text();
+            throw new Error(`ECS task dispatch failed (HTTP ${startRes.status}): ${sErr}`);
+          }
           updateStep('step-ecs', 'done');
 
-          updateStep('step-ml', 'active', 'Polling inference status from DynamoDB...');
+          updateStep('step-ml', 'active', 'Waiting for ECS Fargate container execution...');
           let pollCount = 0;
+          const maxPolls = 140; // 140 * 3s = 420 seconds (7 minutes)
           let completeData = null;
-          while (pollCount < 20) {
+
+          while (pollCount < maxPolls) {
             await new Promise(r => setTimeout(r, 3000));
             pollCount++;
+            const elapsed = pollCount * 3;
+
             try {
               const stRes = await fetch(`${API_BASE}/inference/status?session_id=${sid}`);
+              if (!stRes.ok) {
+                stepMsg.textContent = `⏳ Polling status... (HTTP ${stRes.status}, ${elapsed}s elapsed)`;
+                continue;
+              }
               const stData = await stRes.json();
 
               if (stData.status === 'COMPLETE') {
                 completeData = stData;
                 break;
               } else if (stData.status === 'PROCESSING') {
-                stepMsg.textContent = `⏳ Multimodal ML inference active on AWS Fargate... (Elapsed: ${pollCount * 3}s)`;
-              } else if (stData.status === 'CREATED') {
-                stepMsg.textContent = `⏳ Session logged in DynamoDB (${stData.status}). Awaiting ECS worker pickup... (${pollCount * 3}s)`;
-              } else if (stData.status?.includes('FAILED')) {
-                throw new Error(`Pipeline stopped in state: ${stData.status}`);
+                stepMsg.textContent = `⏳ Real ML inference active on AWS Fargate... MediaPipe pose extraction & 8-feature fusion (${elapsed}s elapsed)`;
+              } else if (stData.status === 'ML_COMPLETE') {
+                updateStep('step-ml', 'done');
+                updateStep('step-bedrock', 'active', `ML inference complete in S3. Synthesizing clinical explanation (${elapsed}s elapsed)...`);
+                stepMsg.textContent = `⏳ ML inference complete in S3. Synthesizing narrative explanation (${elapsed}s elapsed)...`;
+              } else if (stData.status === 'NARRATIVE_GENERATING') {
+                updateStep('step-ml', 'done');
+                updateStep('step-bedrock', 'active', `Synthesizing narrative explanation (${elapsed}s elapsed)...`);
+                stepMsg.textContent = `⏳ Synthesizing clinical narrative explanation (${elapsed}s elapsed)...`;
+              } else if (stData.status === 'CREATED' || stData.status === 'UPLOADED') {
+                stepMsg.textContent = `⏳ Session logged in DynamoDB (${stData.status}). Awaiting ECS worker pickup (${elapsed}s elapsed)...`;
+              } else if (stData.status?.includes('FAILED') || stData.status?.includes('ERROR')) {
+                throw new Error(`AWS Pipeline stopped with failure status: ${stData.status}`);
               }
             } catch (pollErr) {
-              console.warn('Status poll attempt warning:', pollErr);
+              if (pollErr.message && pollErr.message.includes('AWS Pipeline stopped with failure status')) {
+                throw pollErr;
+              }
+              console.warn('Status poll warning:', pollErr);
             }
           }
 
           if (!completeData) {
-            stepMsg.textContent = 'ℹ️ Cloud session verified in DynamoDB. Rendering clinical evaluation...';
-            completeData = getVerifiedSampleResults();
+            throw new Error(`AWS Pipeline execution timed out after ${maxPolls * 3} seconds. Session ID: ${sid}. Real ECS Fargate task did not reach COMPLETE.`);
           }
 
           updateStep('step-ml', 'done');
           updateStep('step-bedrock', 'done');
-          updateStep('step-ready', 'done', '✅ Assessment Complete!');
+          updateStep('step-ready', 'done', '✅ Real Assessment Complete!');
 
           renderResults(completeData);
         } else {
@@ -634,8 +688,8 @@ function getVerifiedSampleResults() {
       { start: 112.0, end: 120.0, type: 'Normal', confidence: 0.14, primary_cue: 'stride_width' }
     ],
     explanation: {
-      provider: 'AWS BEDROCK (Claude 3 Haiku)',
-      quote: 'Patient maintained continuous rhythmic locomotion throughout the evaluated 120-second trial. No overt Freezing of Gait (FoG) episodes exceeding the 0.60 probability threshold were detected. Mild borderline transition fluctuations were noted during turning phases.'
+      provider: 'Deterministic Rule Engine (Grounded)',
+      quote: 'Recording evaluated over 120.0 seconds. No FoG-classified intervals were detected in this recording. Borderline intervals are model outputs with class probability between 0.40 and 0.60 and should be interpreted as uncertain classifications rather than confirmed FoG.'
     }
   };
 }
@@ -646,55 +700,102 @@ function renderResults(data) {
 
   dashboard.classList.remove('hidden');
 
-  const summary = data.summary || {};
-  const episodes = data.episodes || [];
-  const fogCount = summary.fog_episodes !== undefined ? summary.fog_episodes : episodes.filter(e => e.type === 'FoG').length;
-  const borderlineCount = summary.borderline_episodes !== undefined ? summary.borderline_episodes : episodes.filter(e => e.type === 'Borderline').length;
-  const normalCount = summary.normal_episodes !== undefined ? summary.normal_episodes : episodes.filter(e => e.type === 'Normal').length;
-  const totalCount = episodes.length || 15;
+  // 1. Preserve raw overlapping model prediction windows internally
+  const rawEpisodes = data.episodes || [];
+  data.raw_episodes = rawEpisodes;
 
-  document.getElementById('m-total').textContent = totalCount;
-  document.getElementById('m-fog').textContent = fogCount;
-  document.getElementById('m-borderline').textContent = borderlineCount;
-  document.getElementById('m-normal').textContent = normalCount;
+  // 2. Aggregate overlapping windows into non-overlapping timeline
+  const timeline = aggregateTimeline(rawEpisodes);
+  data.aggregated_episodes = timeline;
 
-  document.getElementById('rb-fog-count').textContent = fogCount;
-  document.getElementById('rb-total-count').textContent = totalCount;
+  // 3. Compute statistics strictly from the aggregated non-overlapping timeline
+  const stats = computeAggregatedStats(timeline);
 
-  const avgConf = episodes.length > 0 ? (episodes.reduce((acc, e) => acc + (e.confidence || 0), 0) / episodes.length * 100).toFixed(1) : '0.0';
-  document.getElementById('rb-avg-conf').textContent = `${avgConf}%`;
+  // 4. Update Metric Cards
+  const mTotalEl = document.getElementById('m-total');
+  const mFogEl = document.getElementById('m-fog');
+  const mBordEl = document.getElementById('m-borderline');
+  const mNormEl = document.getElementById('m-normal');
 
+  if (mTotalEl) mTotalEl.textContent = stats.totalIntervals;
+  if (mFogEl) mFogEl.textContent = stats.fogCount;
+  if (mBordEl) mBordEl.textContent = stats.borderlineCount;
+  if (mNormEl) mNormEl.textContent = stats.normalCount;
+
+  // 5. Update Banner & Meta Summary
   const banner = document.getElementById('results-banner');
   const rbTitle = document.getElementById('rb-title');
   const rbSub = document.getElementById('rb-sub');
+  const rbFogCount = document.getElementById('rb-fog-count');
+  const rbTotalCount = document.getElementById('rb-total-count');
+  const rbAvgConf = document.getElementById('rb-avg-conf');
+  const rbCue = document.getElementById('rb-cue');
 
-  if (fogCount > 0) {
-    banner.className = 'results-banner banner-alert';
-    rbTitle.textContent = '⚠️ Freezing of Gait (FoG) Detected';
-    rbSub.textContent = `Model identified ${fogCount} discrete freezing episode(s) during the recording.`;
+  if (rbFogCount) rbFogCount.textContent = stats.fogCount;
+  if (rbTotalCount) rbTotalCount.textContent = stats.totalIntervals;
+  if (rbAvgConf) rbAvgConf.textContent = stats.avgConfidence;
+  if (rbCue) rbCue.textContent = stats.dominantCue;
+
+  if (stats.fogCount > 0) {
+    if (banner) banner.className = 'results-banner banner-alert';
+    if (rbTitle) rbTitle.textContent = '⚠️ Freezing of Gait (FoG) Detected';
+    if (rbSub) rbSub.textContent = `Model identified ${stats.fogCount} discrete FoG-classified interval(s) during the recording.`;
   } else {
-    banner.className = 'results-banner banner-success';
-    rbTitle.textContent = '✅ No Overt Freezing of Gait (FoG) Detected';
-    rbSub.textContent = 'Patient maintained continuous rhythmic gait throughout the evaluated recording.';
+    if (banner) banner.className = 'results-banner banner-success';
+    if (rbTitle) rbTitle.textContent = '✅ No FoG-Classified Intervals Detected';
+    if (rbSub) rbSub.textContent = 'No FoG-classified intervals were detected in this recording.';
   }
 
-  const expl = data.explanation || {};
-  document.getElementById('narrative-quote').textContent = expl.quote || expl.summary || 'No overt Freezing of Gait episodes detected.';
-  document.getElementById('narrative-provider').textContent = expl.provider || 'AWS BEDROCK (Claude 3 Haiku)';
+  // 6. Format Model-Grounded Analysis Narrative strictly derived from Aggregated Timeline
+  const narrativeText = generateModelGroundedNarrative(timeline, stats);
 
+  data.explanation = {
+    provider: 'Deterministic Rule Engine (Grounded)',
+    narrative: narrativeText,
+    summary: stats
+  };
+
+  const narrativeQuoteEl = document.getElementById('narrative-quote');
+  if (narrativeQuoteEl) narrativeQuoteEl.textContent = narrativeText;
+
+  const narrativeProviderEl = document.getElementById('narrative-provider');
+  if (narrativeProviderEl) {
+    narrativeProviderEl.textContent = 'Deterministic Rule Engine (Grounded)';
+  }
+
+  // 7. Render Non-Overlapping Timeline Visualization
+  const timelineViz = document.getElementById('timeline-viz');
+  if (timelineViz) {
+    timelineViz.innerHTML = '';
+    const totalDuration = stats.totalDuration || (timeline.length > 0 ? (timeline[timeline.length - 1].end - timeline[0].start) : 1);
+    timeline.forEach(ep => {
+      const seg = document.createElement('div');
+      const dur = Math.max(0.05, ep.end - ep.start);
+      const widthPct = (dur / totalDuration) * 100;
+      const typeClass = ep.type === 'FoG' ? 'fog' : (ep.type === 'Borderline' ? 'bord' : 'norm');
+      seg.className = `t-segment ${typeClass}`;
+      seg.style.width = `${widthPct}%`;
+      seg.title = `${ep.start.toFixed(2)}s — ${ep.end.toFixed(2)}s | ${ep.type} (${(ep.confidence * 100).toFixed(1)}%) | ${ep.primary_cue}`;
+      timelineViz.appendChild(seg);
+    });
+  }
+
+  // 8. Populate Non-Overlapping Episode Breakdown Table
   const tbody = document.getElementById('t-tbody');
-  tbody.innerHTML = '';
-  episodes.forEach(ep => {
-    const tr = document.createElement('tr');
-    const badgeColor = ep.type === 'FoG' ? '#f87171' : (ep.type === 'Borderline' ? '#fbbf24' : '#3fb950');
-    tr.innerHTML = `
-      <td>${ep.start.toFixed(1)}s — ${ep.end.toFixed(1)}s</td>
-      <td><span style="color: ${badgeColor}; font-weight: 700;">${ep.type}</span></td>
-      <td>${((ep.confidence || 0) * 100).toFixed(1)}%</td>
-      <td><code>${ep.primary_cue || 'None'}</code></td>
-    `;
-    tbody.appendChild(tr);
-  });
+  if (tbody) {
+    tbody.innerHTML = '';
+    timeline.forEach(ep => {
+      const tr = document.createElement('tr');
+      const badgeColor = ep.type === 'FoG' ? '#f87171' : (ep.type === 'Borderline' ? '#fbbf24' : '#3fb950');
+      tr.innerHTML = `
+        <td>${ep.start.toFixed(2)}s — ${ep.end.toFixed(2)}s</td>
+        <td><span style="color: ${badgeColor}; font-weight: 700;">${ep.type}</span></td>
+        <td>${((ep.confidence || 0) * 100).toFixed(1)}%</td>
+        <td><code>${ep.primary_cue || 'None'}</code></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 
   dashboard.scrollIntoView({ behavior: 'smooth' });
 }

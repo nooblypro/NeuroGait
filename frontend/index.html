@@ -346,14 +346,14 @@
           <div class="results-dashboard hidden" id="results-dashboard">
             <!-- Banner -->
             <div class="results-banner banner-success" id="results-banner">
-              <div class="rb-title" id="rb-title">✅ No Overt Freezing of Gait (FoG) Detected</div>
-              <div class="rb-sub" id="rb-sub">Patient maintained continuous rhythmic gait throughout the evaluated recording.</div>
+              <div class="rb-title" id="rb-title">✅ No FoG-Classified Intervals Detected</div>
+              <div class="rb-sub" id="rb-sub">No FoG-classified intervals were detected in this recording.</div>
               <div class="rb-meta" id="rb-meta">
-                <span>Total Episodes: <strong id="rb-fog-count">0</strong> FoG of <strong id="rb-total-count">15</strong> total intervals</span>
+                <span><strong id="rb-fog-count">0</strong> FoG-classified interval(s) of <strong id="rb-total-count">0</strong> total intervals</span>
                 <span class="rb-divider">•</span>
-                <span>Mean Freezing Confidence: <strong id="rb-avg-conf">0.0%</strong></span>
+                <span>Mean Classification Confidence: <strong id="rb-avg-conf">0.0%</strong></span>
                 <span class="rb-divider">•</span>
-                <span>Dominant Statistical Cue: <strong id="rb-cue">None</strong></span>
+                <span>Dominant Model Cue: <strong id="rb-cue">None</strong></span>
               </div>
             </div>
 
@@ -361,48 +361,63 @@
             <div class="metric-grid">
               <div class="m-card">
                 <div class="m-name">TOTAL INTERVALS</div>
-                <div class="m-num" id="m-total">15</div>
+                <div class="m-num" id="m-total">0</div>
               </div>
               <div class="m-card m-alert">
-                <div class="m-name">FOG EPISODES</div>
+                <div class="m-name">FOG INTERVALS</div>
                 <div class="m-num" id="m-fog">0</div>
               </div>
               <div class="m-card m-warn">
                 <div class="m-name">BORDERLINE TRANSITIONS</div>
-                <div class="m-num" id="m-borderline">7</div>
+                <div class="m-num" id="m-borderline">0</div>
               </div>
               <div class="m-card m-pass">
                 <div class="m-name">NORMAL SEGMENTS</div>
-                <div class="m-num" id="m-normal">8</div>
+                <div class="m-num" id="m-normal">0</div>
               </div>
             </div>
 
             <!-- Narrative Card -->
             <div class="narrative-card">
               <div class="n-head">
-                <span>🧠 CLINICAL NARRATIVE EXPLANATION</span>
-                <span class="n-badge" id="narrative-provider">AWS BEDROCK (Claude 3 Haiku)</span>
+                <span>🧠 MODEL-GROUNDED ANALYSIS</span>
+                <span class="n-badge" id="narrative-provider">Model Rule Engine</span>
               </div>
               <blockquote class="n-body" id="narrative-quote">
-                Loading explanation...
+                Loading model-grounded analysis...
               </blockquote>
+            </div>
+
+            <!-- Non-Overlapping Timeline Visualization Card -->
+            <div class="timeline-card">
+              <div class="t-title">NON-OVERLAPPING TIMELINE VISUALIZATION</div>
+              <div class="timeline-bar-wrapper">
+                <div class="timeline-bar" id="timeline-viz">
+                  <!-- Generated dynamically from aggregated timeline -->
+                </div>
+              </div>
+              <div class="timeline-legend">
+                <span class="t-legend-item"><span class="t-box norm-box"></span> Normal</span>
+                <span class="t-legend-item"><span class="t-box bord-box"></span> Borderline</span>
+                <span class="t-legend-item"><span class="t-box fog-box"></span> FoG</span>
+              </div>
             </div>
 
             <!-- Chronological Episode Breakdown Table -->
             <div class="table-card">
-              <div class="t-title">EPISODE BREAKDOWN</div>
+              <div class="t-title">EPISODE BREAKDOWN (NON-OVERLAPPING TIMELINE)</div>
               <div class="t-scroll">
                 <table class="t-table">
                   <thead>
                     <tr>
                       <th>Interval (s)</th>
-                      <th>Type</th>
+                      <th>Classified State</th>
                       <th>Confidence</th>
-                      <th>Dominant Cue</th>
+                      <th>Model-Derived Cue</th>
                     </tr>
                   </thead>
                   <tbody id="t-tbody">
-                    <!-- Populated via JavaScript -->
+                    <!-- Populated via JavaScript from aggregated non-overlapping timeline -->
                   </tbody>
                 </table>
               </div>

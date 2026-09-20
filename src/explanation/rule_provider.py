@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import Counter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .base import CLINICAL_SAFETY_DISCLAIMER, ExplanationProvider, ExplanationResult, ProviderStatus
 
@@ -46,8 +46,10 @@ class DeterministicRuleExplanationProvider(ExplanationProvider):
         """Always available as a deterministic local provider."""
         return True
 
-    def generate(self, episodes: List[Dict[str, Any]]) -> ExplanationResult:
-        """Generate structured narrative from canonical Phase 1 episode list."""
+    def generate(
+        self, episodes: List[Dict[str, Any]], stats: Optional[Dict[str, Any]] = None
+    ) -> ExplanationResult:
+        """Generate structured narrative from canonical Phase 1 episode list or precomputed stats."""
         start_time = time.perf_counter()
 
         if not episodes:
@@ -61,87 +63,89 @@ class DeterministicRuleExplanationProvider(ExplanationProvider):
                 clinical_disclaimer=CLINICAL_SAFETY_DISCLAIMER,
             )
 
-        # 1. Compute summary metrics
-        total_episodes = len(episodes)
-        fog_episodes = [e for e in episodes if e.get("type") == "FoG"]
-        borderline_episodes = [e for e in episodes if e.get("type") == "Borderline"]
-        normal_episodes = [e for e in episodes if e.get("type") == "Normal"]
+        # 1. Compute summary metrics from input non-overlapping intervals or stats
+        if stats:
+            total_episodes = stats.get("totalIntervals", len(episodes))
+            fog_episodes = [e for e in episodes if e.get("type") == "FoG"]
+            borderline_count = stats.get("borderlineCount", len([e for e in episodes if e.get("type") == "Borderline"]))
+            normal_count = stats.get("normalCount", len([e for e in episodes if e.get("type") == "Normal"]))
+            dominant_cue = stats.get("dominantCue", "none")
+            mean_fog_conf = stats.get("meanFogConfidence", 0.0)
+            fog_duration = stats.get("fogDuration", 0.0)
+            fog_burden_pct = stats.get("fogBurdenPct", 0.0)
+            total_duration = stats.get("totalDuration", 0.0)
+            cue_counts = Counter([e.get("primary_cue") for e in fog_episodes if e.get("primary_cue") and e.get("primary_cue") != "None"])
+        else:
+            total_episodes = len(episodes)
+            fog_episodes = [e for e in episodes if e.get("type") == "FoG"]
+            borderline_episodes = [e for e in episodes if e.get("type") == "Borderline"]
+            normal_episodes = [e for e in episodes if e.get("type") == "Normal"]
+            borderline_count = len(borderline_episodes)
+            normal_count = len(normal_episodes)
 
-        trial_start = min(e["start"] for e in episodes)
-        trial_end = max(e["end"] for e in episodes)
-        total_duration = max(0.001, trial_end - trial_start)
+            trial_start = min((e["start"] for e in episodes), default=0.0)
+            trial_end = max((e["end"] for e in episodes), default=0.0)
+            total_duration = max(0.001, trial_end - trial_start)
 
-        fog_duration = sum(max(0.0, e["end"] - e["start"]) for e in fog_episodes)
-        fog_burden_pct = min(100.0, (fog_duration / total_duration) * 100.0)
+            fog_duration = sum(max(0.0, e["end"] - e["start"]) for e in fog_episodes)
+            fog_burden_pct = min(100.0, (fog_duration / total_duration) * 100.0) if total_duration > 0 else 0.0
 
-        # Primary cue frequency for FoG episodes
-        fog_cues = [e.get("primary_cue") for e in fog_episodes if e.get("primary_cue")]
-        cue_counts = Counter(fog_cues)
-        dominant_cue = cue_counts.most_common(1)[0][0] if cue_counts else "none"
+            fog_cues = [e.get("primary_cue") for e in fog_episodes if e.get("primary_cue") and e.get("primary_cue") != "None"]
+            cue_counts = Counter(fog_cues)
+            dominant_cue = cue_counts.most_common(1)[0][0] if cue_counts else "none"
 
-        mean_fog_conf = (
-            sum(e.get("confidence", 0.0) for e in fog_episodes) / len(fog_episodes)
-            if fog_episodes
-            else 0.0
-        )
+            mean_fog_conf = (
+                sum(e.get("confidence", 0.0) for e in fog_episodes) / len(fog_episodes)
+                if fog_episodes
+                else 0.0
+            )
 
-        # 2. Build structured deterministic narrative
-        narrative_paragraphs = []
+        fog_count = len(fog_episodes)
 
-        # Paragraph 1: Overview
-        p1 = (
-            f"Gait trial recorded over {total_duration:.2f} seconds contained {total_episodes} identified "
-            f"interval(s). Automated multimodal analysis classified {len(fog_episodes)} Freezing of Gait (FoG) "
-            f"episode(s) (posterior probability >= 0.60), {len(borderline_episodes)} Borderline episode(s) "
-            f"(0.40 <= probability < 0.60), and {len(normal_episodes)} Normal gait segment(s) (probability < 0.40)."
-        )
-        narrative_paragraphs.append(p1)
-
-        # Paragraph 2: FoG Characterization
-        if fog_episodes:
-            longest_fog = max(fog_episodes, key=lambda e: e["end"] - e["start"])
-            longest_fog_dur = longest_fog["end"] - longest_fog["start"]
-            p2 = (
-                f"Total FoG duration was {fog_duration:.2f} seconds, representing an estimated FoG trial burden of "
-                f"{fog_burden_pct:.1f}%. Mean FoG classification confidence was {mean_fog_conf:.4f}. The longest "
-                f"uninterrupted freezing episode spanned from {longest_fog['start']:.3f}s to {longest_fog['end']:.3f}s "
-                f"({longest_fog_dur:.2f}s duration, confidence {longest_fog.get('confidence', 0.0):.4f})."
+        # 2. Build structured deterministic narrative from aggregated intervals
+        if fog_count == 0:
+            p1 = (
+                f"The recording contained {total_episodes} non-overlapping classified intervals. "
+                f"The model classified 0 intervals as Freezing of Gait (FoG), {borderline_count} as Borderline, "
+                f"and {normal_count} as Normal. No FoG-classified intervals were detected in this recording."
+            )
+        elif fog_count == 1:
+            fog_ep = fog_episodes[0]
+            conf_pct = fog_ep.get("confidence", 0.0) * 100.0
+            cue = fog_ep.get("primary_cue") or dominant_cue
+            p1 = (
+                f"The recording contained {total_episodes} non-overlapping classified intervals. "
+                f"The model classified 1 interval as Freezing of Gait (FoG), {borderline_count} as Borderline, "
+                f"and {normal_count} as Normal. The FoG-classified interval occurred from {fog_ep['start']:.2f}s "
+                f"to {fog_ep['end']:.2f}s with a classification confidence of {conf_pct:.1f}%. "
+                f"The dominant model-derived cue for the FoG interval was {cue}."
             )
         else:
-            p2 = "No confirmed Freezing of Gait (FoG) episodes were detected during this recording interval."
-        narrative_paragraphs.append(p2)
-
-        # Paragraph 3: Primary Cue / Feature Variance Attribution
-        if fog_cues:
-            cue_summary_parts = [
-                f"{cue} ({count} episode{'s' if count > 1 else ''} - {FEATURE_DESCRIPTIONS.get(cue, 'kinematic/inertial deviation')})"
-                for cue, count in cue_counts.most_common()
-            ]
-            p3 = (
-                f"Algorithmic feature attribution identified '{dominant_cue}' as the most frequent primary cue "
-                f"during freezing intervals. Statistical feature deviations observed across FoG episodes: "
-                f"{'; '.join(cue_summary_parts)}. Note: Primary cues reflect the mathematical feature demonstrating "
-                f"the maximum standardized deviation relative to the subject baseline and do not imply clinical causation."
+            longest_fog = max(fog_episodes, key=lambda e: e["end"] - e["start"])
+            longest_dur = longest_fog["end"] - longest_fog["start"]
+            longest_conf_pct = longest_fog.get("confidence", 0.0) * 100.0
+            p1 = (
+                f"The recording contained {total_episodes} non-overlapping classified intervals. "
+                f"The model classified {fog_count} intervals as Freezing of Gait (FoG), {borderline_count} as Borderline, "
+                f"and {normal_count} as Normal. Total FoG duration was {fog_duration:.2f} seconds ({fog_burden_pct:.1f}% burden). "
+                f"The longest FoG interval spanned from {longest_fog['start']:.2f}s to {longest_fog['end']:.2f}s "
+                f"({longest_dur:.2f}s duration, confidence {longest_conf_pct:.1f}%). "
+                f"The dominant model-derived cue across FoG intervals was {dominant_cue}."
             )
-            narrative_paragraphs.append(p3)
 
-        # Paragraph 4: Borderline Transitions
-        if borderline_episodes:
-            p4 = (
-                f"A total of {len(borderline_episodes)} Borderline transition interval(s) were flagged between "
-                f"0.40 and 0.60 probability. These intervals represent ambiguous kinematic or inertial micro-arrests "
-                f"prior to or following overt freezing episodes."
-            )
-            narrative_paragraphs.append(p4)
+        safety_stmt = (
+            "These model-derived feature cues represent statistical associations within the model output "
+            "and do not imply clinical causation or diagnosis."
+        )
 
-        full_narrative = "\n\n".join(narrative_paragraphs)
+        full_narrative = f"{p1}\n\n{safety_stmt}"
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 
         summary = {
             "total_episodes": total_episodes,
-            "fog_episodes": len(fog_episodes),
-            "borderline_episodes": len(borderline_episodes),
-            "normal_episodes": len(normal_episodes),
+            "fog_episodes": fog_count,
+            "borderline_episodes": borderline_count,
+            "normal_episodes": normal_count,
             "trial_duration_seconds": round(total_duration, 3),
             "fog_duration_seconds": round(fog_duration, 3),
             "fog_burden_percentage": round(fog_burden_pct, 2),
