@@ -136,7 +136,7 @@ body {
 
 .brand-title {
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   color: #ffffff;
@@ -145,7 +145,7 @@ body {
 
 .brand-meta {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.825rem;
   font-weight: 500;
   letter-spacing: 0.18em;
   color: var(--accent-gold);
