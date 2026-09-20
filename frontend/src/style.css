@@ -41,6 +41,7 @@
 }
 
 html {
+  font-size: 14px; /* Reduced by 2px from browser default 16px to scale all text respectively */
   background-color: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -1010,15 +1011,20 @@ body {
 .beat-assessment {
   overflow-y: auto !important;
   pointer-events: auto !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
 }
 
 .assessment-inner {
-  max-width: 1080px;
-  padding: 3rem 2rem;
+  max-width: 1040px;
+  height: auto !important;
+  min-height: 100%;
+  justify-content: flex-start !important;
+  padding: 5.2rem 2rem 6.5rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.6rem;
+  gap: 1.25rem;
   margin: 0 auto;
 }
 
